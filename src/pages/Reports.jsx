@@ -7,8 +7,6 @@ import LoadingSpinner from "../components/common/LoadingSpinner"
 import SalesChart from "../components/reports/SalesChart"
 import CategoryChart from "../components/reports/CategoryChart"
 import PaymentMethodsChart from "../components/reports/PaymentMethodsChart"
-import TopProductsTable from "../components/reports/TopProductsTable"
-import TopCustomersTable from "../components/reports/TopCustomersTable"
 import SalesHistoryTable from "../components/reports/SalesHistoryTable"
 import SalesAnalysisFilters from "../components/reports/SalesAnalysisFilters"
 import {
