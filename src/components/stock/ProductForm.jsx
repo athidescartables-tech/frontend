@@ -179,7 +179,6 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
     }
   }
 
-  // NUEVO: Validar sección específica
   const validateSection = (sectionId) => {
     const newErrors = {}
 
@@ -210,10 +209,10 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
           }
         }
 
-        // Validar stock mínimo según tipo de unidad
-        if (!formData.min_stock || Number.parseFloat(formData.min_stock) < 0) {
+        const minStockValue = formData.min_stock ? Number.parseFloat(formData.min_stock) : 10
+        if (!formData.min_stock || minStockValue < 0) {
           newErrors.min_stock = "El stock mínimo es requerido y no puede ser negativo"
-        } else if (formData.unit_type === "unidades" && !Number.isInteger(Number.parseFloat(formData.min_stock))) {
+        } else if (formData.unit_type === "unidades" && !Number.isInteger(minStockValue)) {
           newErrors.min_stock = "Para productos por unidades, el stock mínimo debe ser un número entero"
         }
         break
@@ -229,7 +228,7 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
         break
     }
 
-    setErrors(newErrors)
+    setErrors((prev) => ({ ...prev, ...newErrors }))
     return Object.keys(newErrors).length === 0
   }
 
@@ -315,11 +314,10 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
     }
   }
 
-  // Verificar si generará alerta
   const willGenerateAlert = () => {
     const currentStock = Number.parseFloat(formData.stock) || 0
-    const minStock = Number.parseFloat(formData.min_stock) || 0
-    return currentStock <= minStock && currentStock > 0
+    const minStock = Number.parseFloat(formData.min_stock) || 10
+    return currentStock <= minStock
   }
 
   // Calcular margen de ganancia
@@ -365,7 +363,6 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
   const selectedCategory = categories.find((cat) => cat.id === Number.parseInt(formData.category_id))
   const currentSectionIndex = sections.findIndex((s) => s.id === activeSection)
   const isLastSection = currentSectionIndex === sections.length - 1
-
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -1092,5 +1089,3 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
 }
 
 export default ProductForm
-
-
