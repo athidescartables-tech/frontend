@@ -8,6 +8,7 @@ export const useProductStore = create((set, get) => ({
   error: null,
   lastFetch: null,
   lastFetchTopSelling: null, // NUEVO: Cache para productos más vendidos
+  lastParamsKey: null, // NUEVO: Cache para parámetros de productos
   pagination: {
     page: 1,
     limit: 25,
@@ -146,7 +147,9 @@ export const useProductStore = create((set, get) => ({
       // Actualizar producto en ambas listas si está presente
       set((state) => ({
         products: state.products.map((product) => (product.id === id ? response.data.data : product)),
-        topSellingProducts: state.topSellingProducts.map((product) => (product.id === id ? response.data.data : product)),
+        topSellingProducts: state.topSellingProducts.map((product) =>
+          product.id === id ? response.data.data : product,
+        ),
         loading: false,
         // Limpiar cache para refrescar
         lastFetchTopSelling: null,
@@ -166,24 +169,39 @@ export const useProductStore = create((set, get) => ({
   updateStock: (productId, newStock) => {
     set((state) => ({
       products: state.products.map((product) => (product.id === productId ? { ...product, stock: newStock } : product)),
-      topSellingProducts: state.topSellingProducts.map((product) => 
-        product.id === productId ? { ...product, stock: newStock } : product
+      topSellingProducts: state.topSellingProducts.map((product) =>
+        product.id === productId ? { ...product, stock: newStock } : product,
       ),
     }))
   },
 
-  // Eliminar producto
+  // Actualizar función deleteProduct para manejar eliminación real
   deleteProduct: async (id) => {
     set({ loading: true, error: null })
     try {
-      await productsService.deleteProduct(id)
+      const response = await productsService.deleteProduct(id)
 
-      set((state) => ({
-        products: state.products.map((product) => (product.id === id ? { ...product, active: false } : product)),
-        topSellingProducts: state.topSellingProducts.filter((product) => product.id !== id),
-        loading: false,
-        lastFetchTopSelling: null,
-      }))
+      set((state) => {
+        // Si el producto fue eliminado completamente, removerlo de las listas
+        if (response.data.action === "deleted") {
+          return {
+            products: state.products.filter((product) => product.id !== id),
+            topSellingProducts: state.topSellingProducts.filter((product) => product.id !== id),
+            loading: false,
+            lastFetchTopSelling: null,
+          }
+        } else {
+          // Si solo fue desactivado, actualizar el estado
+          return {
+            products: state.products.map((product) => (product.id === id ? { ...product, active: false } : product)),
+            topSellingProducts: state.topSellingProducts.filter((product) => product.id !== id),
+            loading: false,
+            lastFetchTopSelling: null,
+          }
+        }
+      })
+
+      return response.data
     } catch (error) {
       set({
         error: error.response?.data?.message || error.message || "Error al eliminar producto",
@@ -212,9 +230,11 @@ export const useProductStore = create((set, get) => ({
 
   getProductsByCategory: (categoryId) => {
     // Para ventas, usar productos top selling filtrados por categoría
-    const topProducts = get().topSellingProducts.filter((product) => product.category_id === categoryId && product.active)
+    const topProducts = get().topSellingProducts.filter(
+      (product) => product.category_id === categoryId && product.active,
+    )
     if (topProducts.length > 0) return topProducts
-    
+
     // Fallback a todos los productos
     return get().products.filter((product) => product.category_id === categoryId && product.active)
   },
@@ -225,7 +245,7 @@ export const useProductStore = create((set, get) => ({
 
     const topProducts = get().topSellingProducts
     const allProducts = get().products
-    
+
     // Buscar en productos top selling primero
     if (topProducts.length > 0) {
       const topResults = topProducts.filter(

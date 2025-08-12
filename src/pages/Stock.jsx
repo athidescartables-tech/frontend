@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useProductStore } from "../stores/productStore"
 import { useStockStore } from "../stores/stockStore"
 import { useCategoryStore } from "../stores/categoryStore"
-import { formatCurrency, formatNumber, formatStock } from "../lib/formatters"
+import { formatCurrency, formatStock } from "../lib/formatters"
 import Card from "../components/common/Card"
 import Button from "../components/common/Button"
 import Pagination from "../components/common/Pagination"
@@ -18,7 +18,6 @@ import {
   CubeIcon,
   ExclamationTriangleIcon,
   ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
   PencilIcon,
   TrashIcon,
   ArrowsRightLeftIcon,
@@ -34,7 +33,7 @@ const Stock = () => {
     loading: productsLoading,
     pagination: productsPagination,
   } = useProductStore()
-  const { fetchStockStats, fetchStockAlerts, getStockStats, fetchStockMovements, stockAlerts } = useStockStore()
+  const { fetchStockStats, fetchStockAlerts, stockAlerts } = useStockStore()
   const { categories, fetchCategories } = useCategoryStore()
 
   const [activeTab, setActiveTab] = useState("products")
@@ -108,7 +107,7 @@ const Stock = () => {
     return () => clearTimeout(timeoutId)
   }, [searchQuery, filters, fetchProducts])
 
-  const stats = getStockStats()
+
 
   // Función para manejar cambio de página
   const handlePageChange = useCallback((newPage) => {
@@ -175,12 +174,23 @@ const Stock = () => {
     [categories],
   )
 
-  // Funciones de manejo de productos
+  // Mejorar función de eliminación con mejor feedback
   const handleDeleteProduct = useCallback(
     async (product) => {
-      if (window.confirm(`¿Estás seguro de que deseas eliminar el producto "${product.name}"?`)) {
+      // Mensaje de confirmación más específico
+      const confirmMessage = `¿Estás seguro de que deseas eliminar el producto "${product.name}"?\n\nEsta acción no se puede deshacer.`
+
+      if (window.confirm(confirmMessage)) {
         try {
-          await deleteProduct(product.id)
+          const result = await deleteProduct(product.id)
+
+          // Mostrar mensaje específico según la acción realizada
+          if (result.action === "deleted") {
+            alert(`Producto "${product.name}" eliminado completamente de la base de datos.`)
+          } else {
+            alert(`Producto "${product.name}" desactivado (tiene ventas asociadas).`)
+          }
+
           // Recargar la página actual después de eliminar
           const params = {
             page: filters.page,
@@ -192,6 +202,7 @@ const Stock = () => {
           fetchProducts(params, true)
         } catch (error) {
           console.error("Error deleting product:", error)
+          alert("Error al eliminar el producto. Por favor, inténtalo de nuevo.")
         }
       }
     },
@@ -274,8 +285,8 @@ const Stock = () => {
                 activeTab === tab.id
                   ? "border-primary-500 text-primary-600"
                   : tab.hasAlerts // APLICADO: Estilo de alerta a la pestaña
-                  ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
               <tab.icon className="h-5 w-5 mr-2" />
