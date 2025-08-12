@@ -131,9 +131,14 @@ const StockMovementsList = () => {
     }
   }
 
-  const getProductInfo = (productId) => {
-    const product = products.find((p) => p.id === productId)
-    return product || { name: "Producto eliminado", unit_type: "unidades", description: "" }
+  const getProductInfo = (movement) => {
+    // Usar la información que ya viene del backend con cada movimiento
+    return {
+      name: movement.product_name || "Producto eliminado",
+      unit_type: movement.product_unit_type || "unidades",
+      description: "", // El backend no incluye description en los movimientos por performance
+      image: movement.product_image || null,
+    }
   }
 
   const hasActiveFilters = searchQuery || filters.type || filters.dateRange.start || filters.dateRange.end
@@ -216,7 +221,7 @@ const StockMovementsList = () => {
               ) : (
                 stockMovements.map((movement) => {
                   const MovementIcon = getMovementIcon(movement.type)
-                  const product = getProductInfo(movement.productId)
+                  const product = getProductInfo(movement)
 
                   return (
                     <tr key={movement.id} className="hover:bg-gray-50">
@@ -229,9 +234,9 @@ const StockMovementsList = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-start">
                           <div className="h-8 w-8 rounded-md overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
-                            {movement.product_image ? (
+                            {product.image ? (
                               <img
-                                src={movement.product_image || "/placeholder.svg"}
+                                src={product.image || "/placeholder.svg"}
                                 alt={product.name}
                                 className="h-full w-full object-cover"
                               />

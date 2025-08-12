@@ -71,6 +71,7 @@ export const useStockStore = create((set, get) => ({
         user: movement.user_name || "Sistema",
         product_name: movement.product_name,
         product_image: movement.product_image,
+        product_unit_type: movement.product_unit_type, // Incluir unit_type del producto
       }))
 
       set({
