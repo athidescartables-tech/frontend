@@ -107,6 +107,8 @@ const Stock = () => {
     return () => clearTimeout(timeoutId)
   }, [searchQuery, filters, fetchProducts])
 
+
+
   // Función para manejar cambio de página
   const handlePageChange = useCallback((newPage) => {
     setFilters((prev) => ({ ...prev, page: newPage }))
@@ -426,16 +428,13 @@ const Stock = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              product.stock <= (product.min_stock || 10)
+                              product.stock <= product.min_stock
                                 ? "bg-yellow-100 text-yellow-800"
                                 : "bg-green-100 text-green-800"
                             }`}
                           >
                             {formatStock(product.stock, product.unit_type)}
                           </span>
-                          <div className="text-xs text-gray-500 mt-1">
-                            Mín: {formatStock(product.min_stock || 10, product.unit_type)}
-                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span

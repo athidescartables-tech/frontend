@@ -67,13 +67,28 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
   // Cargar datos del producto si estamos editando
   useEffect(() => {
     if (product) {
+      const formatStockValue = (value, unitType) => {
+        if (!value) return ""
+        const num = Number.parseFloat(value)
+        if (isNaN(num)) return ""
+
+        // Para unidades, mostrar como entero
+        if (unitType === "unidades") {
+          return Math.floor(num).toString()
+        }
+
+        // Para kg, mantener decimales
+        return num.toString()
+      }
+
       setFormData({
         name: product.name || "",
         description: product.description || "",
         price: product.price?.toString() || "",
         cost: product.cost?.toString() || "",
-        stock: product.stock?.toString() || "",
-        min_stock: product.min_stock?.toString() || "10",
+        // Aplicando formateo correcto para stock y min_stock
+        stock: formatStockValue(product.stock, product.unit_type || "unidades"),
+        min_stock: formatStockValue(product.min_stock, product.unit_type || "unidades"),
         category_id: product.category_id?.toString() || "",
         barcode: product.barcode || "",
         image: product.image || "",
@@ -179,6 +194,7 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
     }
   }
 
+  // NUEVO: Validar sección específica
   const validateSection = (sectionId) => {
     const newErrors = {}
 
@@ -209,10 +225,10 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
           }
         }
 
-        const minStockValue = formData.min_stock ? Number.parseFloat(formData.min_stock) : 10
-        if (!formData.min_stock || minStockValue < 0) {
+        // Validar stock mínimo según tipo de unidad
+        if (!formData.min_stock || Number.parseFloat(formData.min_stock) < 0) {
           newErrors.min_stock = "El stock mínimo es requerido y no puede ser negativo"
-        } else if (formData.unit_type === "unidades" && !Number.isInteger(minStockValue)) {
+        } else if (formData.unit_type === "unidades" && !Number.isInteger(Number.parseFloat(formData.min_stock))) {
           newErrors.min_stock = "Para productos por unidades, el stock mínimo debe ser un número entero"
         }
         break
@@ -228,7 +244,7 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
         break
     }
 
-    setErrors((prev) => ({ ...prev, ...newErrors }))
+    setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
@@ -314,10 +330,11 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
     }
   }
 
+  // Verificar si generará alerta
   const willGenerateAlert = () => {
     const currentStock = Number.parseFloat(formData.stock) || 0
-    const minStock = Number.parseFloat(formData.min_stock) || 10
-    return currentStock <= minStock
+    const minStock = Number.parseFloat(formData.min_stock) || 0
+    return currentStock <= minStock && currentStock > 0
   }
 
   // Calcular margen de ganancia
