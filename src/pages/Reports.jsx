@@ -12,7 +12,6 @@ import SalesAnalysisFilters from "../components/reports/SalesAnalysisFilters"
 import {
 CurrencyDollarIcon,
 ShoppingCartIcon,
-UsersIcon,
 ArrowUpIcon,
 ArrowDownIcon,
 ClockIcon,

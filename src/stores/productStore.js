@@ -239,6 +239,43 @@ export const useProductStore = create((set, get) => ({
     return get().products.filter((product) => product.category_id === categoryId && product.active)
   },
 
+    // Búsqueda asíncrona por código de barras (fallback a API si no está en memoria)
+  getProductByBarcodeAsync: async (barcode) => {
+    if (!barcode) return null
+    const state = get()
+
+    // 1) Buscar en topSelling primero
+    const topProduct = state.topSellingProducts.find((p) => p.barcode === barcode)
+    if (topProduct) return topProduct
+
+    // 2) Buscar en productos cargados localmente
+    const localProduct = state.products.find((p) => p.barcode === barcode)
+    if (localProduct) return localProduct
+
+    // 3) Fallback: pedir a la API (usa el endpoint /products con search)
+    try {
+      set({ loading: true, error: null })
+      const resp = await productsService.getProducts({ search: barcode, limit: 1 })
+      const found = resp.data?.data?.products?.[0] || null
+      if (found) {
+        // Añadir al arreglo local si no existe aún
+        set((s) => {
+          const exists = s.products.some((p) => p.id === found.id)
+          return {
+            products: exists ? s.products : [found, ...s.products],
+            loading: false,
+          }
+        })
+        return found
+      }
+      set({ loading: false })
+      return null
+    } catch (err) {
+      set({ loading: false, error: err?.response?.data?.message || err.message || "Error buscando producto" })
+      return null
+    }
+  },
+
   // ACTUALIZADO: Búsqueda que priorice productos top selling
   searchProducts: (query) => {
     if (!query) return get().topSellingProducts.length > 0 ? get().topSellingProducts : get().products
