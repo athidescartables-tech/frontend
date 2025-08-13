@@ -9,14 +9,14 @@ const ProductSearch = ({ onSearchChange, searchTerm }) => {
   const [isSearchingBarcode, setIsSearchingBarcode] = useState(false)
   const inputRef = useRef(null)
 
- const { getProductByBarcodeAsync } = useProductStore()
+  const { getProductByBarcode } = useProductStore()
   const { addToCart } = useSalesStore()
 
   const handleBarcodeSearch = () => {
     if (isSearchingBarcode) {
       // Si ya está en modo código de barras, buscar el producto
       if (searchTerm.trim()) {
-        const product = getProductByBarcodeAsync(searchTerm.trim())
+        const product = getProductByBarcode(searchTerm.trim())
         if (product && product.active && product.stock > 0) {
           addToCart(product, 1)
           onSearchChange("")

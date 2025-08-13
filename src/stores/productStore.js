@@ -4,11 +4,15 @@ import { productsService } from "../services/productsService"
 export const useProductStore = create((set, get) => ({
   products: [],
   topSellingProducts: [], // NUEVO: Productos más vendidos
+  searchResults: [], // Nuevo estado para resultados de búsqueda
   loading: false,
+  searchLoading: false, // Loading específico para búsquedas
   error: null,
   lastFetch: null,
   lastFetchTopSelling: null, // NUEVO: Cache para productos más vendidos
   lastParamsKey: null, // NUEVO: Cache para parámetros de productos
+  lastSearchTerm: null, // Cache para término de búsqueda
+  lastSearchFetch: null, // Cache para búsquedas
   pagination: {
     page: 1,
     limit: 25,
@@ -56,6 +60,60 @@ export const useProductStore = create((set, get) => ({
       set({
         error: error.response?.data?.message || error.message || "Error al cargar productos más vendidos",
         loading: false,
+      })
+      throw error
+    }
+  },
+
+  searchProductsInDatabase: async (searchTerm, forceRefresh = false) => {
+    const state = get()
+
+    if (!searchTerm || !searchTerm.trim()) {
+      set({ searchResults: [], lastSearchTerm: null })
+      return []
+    }
+
+    const trimmedTerm = searchTerm.trim()
+
+    // Cache para búsquedas (30 segundos)
+    const now = Date.now()
+    const cacheTime = 30 * 1000
+
+    if (
+      !forceRefresh &&
+      state.lastSearchTerm === trimmedTerm &&
+      state.lastSearchFetch &&
+      now - state.lastSearchFetch < cacheTime &&
+      state.searchResults.length >= 0
+    ) {
+      return state.searchResults
+    }
+
+    set({ searchLoading: true, error: null })
+    try {
+      // Buscar en toda la base de datos con parámetros optimizados
+      const response = await productsService.getProducts({
+        search: trimmedTerm,
+        active: "true",
+        limit: 50, // Límite razonable para búsquedas
+        page: 1,
+      })
+
+      const searchResults = response.data.data.products || []
+
+      set({
+        searchResults,
+        lastSearchTerm: trimmedTerm,
+        lastSearchFetch: now,
+        searchLoading: false,
+      })
+
+      return searchResults
+    } catch (error) {
+      set({
+        error: error.response?.data?.message || error.message || "Error al buscar productos",
+        searchLoading: false,
+        searchResults: [],
       })
       throw error
     }
@@ -144,15 +202,17 @@ export const useProductStore = create((set, get) => ({
     try {
       const response = await productsService.updateProduct(id, productData)
 
-      // Actualizar producto en ambas listas si está presente
+      // Actualizar producto en todas las listas si está presente
       set((state) => ({
         products: state.products.map((product) => (product.id === id ? response.data.data : product)),
         topSellingProducts: state.topSellingProducts.map((product) =>
           product.id === id ? response.data.data : product,
         ),
+        searchResults: state.searchResults.map((product) => (product.id === id ? response.data.data : product)),
         loading: false,
         // Limpiar cache para refrescar
         lastFetchTopSelling: null,
+        lastSearchFetch: null,
       }))
 
       return response.data.data
@@ -165,11 +225,14 @@ export const useProductStore = create((set, get) => ({
     }
   },
 
-  // Actualizar stock local (ACTUALIZADO para manejar ambas listas)
+  // Actualizar stock local (ACTUALIZADO para manejar todas las listas)
   updateStock: (productId, newStock) => {
     set((state) => ({
       products: state.products.map((product) => (product.id === productId ? { ...product, stock: newStock } : product)),
       topSellingProducts: state.topSellingProducts.map((product) =>
+        product.id === productId ? { ...product, stock: newStock } : product,
+      ),
+      searchResults: state.searchResults.map((product) =>
         product.id === productId ? { ...product, stock: newStock } : product,
       ),
     }))
@@ -187,16 +250,20 @@ export const useProductStore = create((set, get) => ({
           return {
             products: state.products.filter((product) => product.id !== id),
             topSellingProducts: state.topSellingProducts.filter((product) => product.id !== id),
+            searchResults: state.searchResults.filter((product) => product.id !== id),
             loading: false,
             lastFetchTopSelling: null,
+            lastSearchFetch: null,
           }
         } else {
           // Si solo fue desactivado, actualizar el estado
           return {
             products: state.products.map((product) => (product.id === id ? { ...product, active: false } : product)),
             topSellingProducts: state.topSellingProducts.filter((product) => product.id !== id),
+            searchResults: state.searchResults.filter((product) => product.id !== id),
             loading: false,
             lastFetchTopSelling: null,
+            lastSearchFetch: null,
           }
         }
       })
@@ -215,20 +282,35 @@ export const useProductStore = create((set, get) => ({
   getTopSellingProducts: () => get().topSellingProducts,
   getProducts: () => get().products.filter((p) => p.active),
   getAllProducts: () => get().products,
+  getSearchResults: () => get().searchResults, // Nuevo getter para resultados de búsqueda
   getProductById: (id) => {
-    // Buscar primero en productos top, luego en todos los productos
+    // Buscar en todas las listas disponibles
+    const searchResult = get().searchResults.find((p) => p.id === id)
+    if (searchResult) return searchResult
+
     const topProduct = get().topSellingProducts.find((p) => p.id === id)
     if (topProduct) return topProduct
+
     return get().products.find((p) => p.id === id)
   },
   getProductByBarcode: (barcode) => {
-    // Buscar primero en productos top, luego en todos los productos
+    // Buscar en todas las listas disponibles
+    const searchResult = get().searchResults.find((p) => p.barcode === barcode)
+    if (searchResult) return searchResult
+
     const topProduct = get().topSellingProducts.find((p) => p.barcode === barcode)
     if (topProduct) return topProduct
+
     return get().products.find((p) => p.barcode === barcode)
   },
 
   getProductsByCategory: (categoryId) => {
+    // Buscar en resultados de búsqueda primero si están disponibles
+    const searchResults = get().searchResults
+    if (searchResults.length > 0) {
+      return searchResults.filter((product) => product.category_id === categoryId && product.active)
+    }
+
     // Para ventas, usar productos top selling filtrados por categoría
     const topProducts = get().topSellingProducts.filter(
       (product) => product.category_id === categoryId && product.active,
@@ -239,47 +321,21 @@ export const useProductStore = create((set, get) => ({
     return get().products.filter((product) => product.category_id === categoryId && product.active)
   },
 
-    // Búsqueda asíncrona por código de barras (fallback a API si no está en memoria)
-  getProductByBarcodeAsync: async (barcode) => {
-    if (!barcode) return null
-    const state = get()
-
-    // 1) Buscar en topSelling primero
-    const topProduct = state.topSellingProducts.find((p) => p.barcode === barcode)
-    if (topProduct) return topProduct
-
-    // 2) Buscar en productos cargados localmente
-    const localProduct = state.products.find((p) => p.barcode === barcode)
-    if (localProduct) return localProduct
-
-    // 3) Fallback: pedir a la API (usa el endpoint /products con search)
-    try {
-      set({ loading: true, error: null })
-      const resp = await productsService.getProducts({ search: barcode, limit: 1 })
-      const found = resp.data?.data?.products?.[0] || null
-      if (found) {
-        // Añadir al arreglo local si no existe aún
-        set((s) => {
-          const exists = s.products.some((p) => p.id === found.id)
-          return {
-            products: exists ? s.products : [found, ...s.products],
-            loading: false,
-          }
-        })
-        return found
-      }
-      set({ loading: false })
-      return null
-    } catch (err) {
-      set({ loading: false, error: err?.response?.data?.message || err.message || "Error buscando producto" })
-      return null
-    }
-  },
-
-  // ACTUALIZADO: Búsqueda que priorice productos top selling
   searchProducts: (query) => {
-    if (!query) return get().topSellingProducts.length > 0 ? get().topSellingProducts : get().products
+    if (!query || !query.trim()) {
+      // Sin búsqueda, devolver productos más vendidos
+      return get().topSellingProducts.length > 0 ? get().topSellingProducts : get().products
+    }
 
+    // Si hay resultados de búsqueda en BD, usarlos
+    const searchResults = get().searchResults
+    const lastSearchTerm = get().lastSearchTerm
+
+    if (lastSearchTerm === query.trim() && searchResults.length >= 0) {
+      return searchResults
+    }
+
+    // Fallback: buscar en productos cargados localmente
     const topProducts = get().topSellingProducts
     const allProducts = get().products
 
@@ -306,16 +362,22 @@ export const useProductStore = create((set, get) => ({
   // Limpiar errores
   clearError: () => set({ error: null }),
 
-  // ACTUALIZADO: Resetear estado incluyendo productos top
+  clearSearchResults: () => set({ searchResults: [], lastSearchTerm: null, lastSearchFetch: null }),
+
+  // ACTUALIZADO: Resetear estado incluyendo búsquedas
   reset: () =>
     set({
       products: [],
       topSellingProducts: [],
+      searchResults: [],
       loading: false,
+      searchLoading: false,
       error: null,
       lastFetch: null,
       lastFetchTopSelling: null,
       lastParamsKey: null,
+      lastSearchTerm: null,
+      lastSearchFetch: null,
       pagination: {
         page: 1,
         limit: 25,
