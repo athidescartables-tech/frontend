@@ -35,6 +35,9 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
     name: "",
     description: "",
     price: "",
+    price_level_1: "",
+    price_level_2: "",
+    price_level_3: "",
     cost: "",
     stock: "",
     min_stock: "10",
@@ -85,6 +88,9 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
         name: product.name || "",
         description: product.description || "",
         price: product.price?.toString() || "",
+        price_level_1: product.price_level_1?.toString() || product.price?.toString() || "",
+        price_level_2: product.price_level_2?.toString() || "",
+        price_level_3: product.price_level_3?.toString() || "",
         cost: product.cost?.toString() || "",
         // Aplicando formateo correcto para stock y min_stock
         stock: formatStockValue(product.stock, product.unit_type || "unidades"),
@@ -103,6 +109,9 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
         name: "",
         description: "",
         price: "",
+        price_level_1: "",
+        price_level_2: "",
+        price_level_3: "",
         cost: "",
         stock: "",
         min_stock: "10",
@@ -194,6 +203,28 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
     }
   }
 
+  const handlePriceLevel1Change = (values) => {
+    const { value } = values
+    const basePrice = Number.parseFloat(value) || 0
+
+    setFormData((prev) => ({
+      ...prev,
+      price_level_1: value,
+      price: value, // Keep backward compatibility
+      // Auto-fill other levels if they're empty
+      price_level_2: prev.price_level_2 || (basePrice > 0 ? (basePrice * 1.1).toFixed(2) : ""),
+      price_level_3: prev.price_level_3 || (basePrice > 0 ? (basePrice * 1.2).toFixed(2) : ""),
+    }))
+
+    if (errors.price_level_1 || errors.price) {
+      setErrors((prev) => ({
+        ...prev,
+        price_level_1: "",
+        price: "",
+      }))
+    }
+  }
+
   // NUEVO: Validar sección específica
   const validateSection = (sectionId) => {
     const newErrors = {}
@@ -206,8 +237,14 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
         break
 
       case "pricing":
-        if (!formData.price || Number.parseFloat(formData.price) <= 0) {
-          newErrors.price = "El precio debe ser mayor a 0"
+        if (!formData.price_level_1 || Number.parseFloat(formData.price_level_1) <= 0) {
+          newErrors.price_level_1 = "El precio de venta 1 debe ser mayor a 0"
+        }
+        if (!formData.price_level_2 || Number.parseFloat(formData.price_level_2) <= 0) {
+          newErrors.price_level_2 = "El precio de venta 2 debe ser mayor a 0"
+        }
+        if (!formData.price_level_3 || Number.parseFloat(formData.price_level_3) <= 0) {
+          newErrors.price_level_3 = "El precio de venta 3 debe ser mayor a 0"
         }
         if (formData.cost && Number.parseFloat(formData.cost) < 0) {
           newErrors.cost = "El costo no puede ser negativo"
@@ -299,7 +336,10 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
       const dataToSend = {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
-        price: Number.parseFloat(formData.price),
+        price: Number.parseFloat(formData.price_level_1), // Keep backward compatibility
+        price_level_1: Number.parseFloat(formData.price_level_1),
+        price_level_2: Number.parseFloat(formData.price_level_2),
+        price_level_3: Number.parseFloat(formData.price_level_3),
         cost: formData.cost ? Number.parseFloat(formData.cost) : 0,
         min_stock: formData.min_stock ? Number.parseFloat(formData.min_stock) : 10,
         category_id: formData.category_id ? Number.parseInt(formData.category_id) : null,
@@ -337,9 +377,8 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
     return currentStock <= minStock && currentStock > 0
   }
 
-  // Calcular margen de ganancia
-  const calculateMargin = () => {
-    const price = Number.parseFloat(formData.price) || 0
+  const calculateMargin = (priceLevel = 1) => {
+    const price = Number.parseFloat(formData[`price_level_${priceLevel}`]) || 0
     const cost = Number.parseFloat(formData.cost) || 0
     if (price > 0 && cost > 0) {
       return (((price - cost) / price) * 100).toFixed(1)
@@ -512,12 +551,12 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
                                   {formData.name || "Sin nombre"}
                                 </span>
                               </div>
-                              {formData.price && (
+                              {formData.price_level_1 && (
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs text-gray-500">Precio:</span>
+                                  <span className="text-xs text-gray-500">Precio 1:</span>
                                   <span className="text-xs font-bold text-green-600">
                                     $
-                                    {Number.parseFloat(formData.price || 0).toLocaleString("es-AR", {
+                                    {Number.parseFloat(formData.price_level_1 || 0).toLocaleString("es-AR", {
                                       minimumFractionDigits: 2,
                                     })}
                                   </span>
@@ -535,10 +574,10 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
                                   <span className="text-xs font-medium text-gray-900">{selectedCategory.name}</span>
                                 </div>
                               )}
-                              {formData.cost && formData.price && (
+                              {formData.cost && formData.price_level_1 && (
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs text-gray-500">Margen:</span>
-                                  <span className="text-xs font-medium text-blue-600">{calculateMargin()}%</span>
+                                  <span className="text-xs font-medium text-blue-600">{calculateMargin(1)}%</span>
                                 </div>
                               )}
                             </div>
@@ -747,81 +786,161 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
                                   <h3 className="text-lg font-semibold text-green-900">Configuración de Precios</h3>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  {/* Precio de venta */}
-                                  <div>
-                                    <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-                                      Precio de venta * {formData.unit_type === "kg" && "(por kg)"}
-                                    </label>
-                                    <NumericFormat
-                                      name="price"
-                                      value={formData.price}
-                                      onValueChange={(values) => handlePriceChange("price", values)}
-                                      thousandSeparator="."
-                                      decimalSeparator=","
-                                      prefix="$ "
-                                      decimalScale={2}
-                                      allowNegative={false}
-                                      className={`block w-full px-4 py-3 border rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-lg font-semibold ${
-                                        errors.price
-                                          ? "border-red-300 bg-red-50"
-                                          : "border-gray-300 hover:border-gray-400 bg-white"
-                                      }`}
-                                      placeholder="$ 0,00"
-                                    />
-                                    {errors.price && (
-                                      <p className="mt-2 text-sm text-red-600 flex items-center">
-                                        <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
-                                        {errors.price}
-                                      </p>
-                                    )}
+                                <div className="space-y-6">
+                                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                                    <h4 className="text-md font-medium text-gray-900 mb-4">
+                                      Niveles de Precios de Venta
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                      {/* Precio de venta 1 */}
+                                      <div>
+                                        <label
+                                          htmlFor="price_level_1"
+                                          className="block text-sm font-medium text-gray-700 mb-2"
+                                        >
+                                          Precio de venta 1 * {formData.unit_type === "kg" && "(por kg)"}
+                                        </label>
+                                        <NumericFormat
+                                          name="price_level_1"
+                                          value={formData.price_level_1}
+                                          onValueChange={handlePriceLevel1Change}
+                                          thousandSeparator="."
+                                          decimalSeparator=","
+                                          prefix="$ "
+                                          decimalScale={2}
+                                          allowNegative={false}
+                                          className={`block w-full px-4 py-3 border rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-lg font-semibold ${
+                                            errors.price_level_1
+                                              ? "border-red-300 bg-red-50"
+                                              : "border-gray-300 hover:border-gray-400 bg-white"
+                                          }`}
+                                          placeholder="$ 0,00"
+                                        />
+                                        {errors.price_level_1 && (
+                                          <p className="mt-2 text-sm text-red-600 flex items-center">
+                                            <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+                                            {errors.price_level_1}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      {/* Precio de venta 2 */}
+                                      <div>
+                                        <label
+                                          htmlFor="price_level_2"
+                                          className="block text-sm font-medium text-gray-700 mb-2"
+                                        >
+                                          Precio de venta 2 * {formData.unit_type === "kg" && "(por kg)"}
+                                        </label>
+                                        <NumericFormat
+                                          name="price_level_2"
+                                          value={formData.price_level_2}
+                                          onValueChange={(values) => handlePriceChange("price_level_2", values)}
+                                          thousandSeparator="."
+                                          decimalSeparator=","
+                                          prefix="$ "
+                                          decimalScale={2}
+                                          allowNegative={false}
+                                          className={`block w-full px-4 py-3 border rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-lg font-semibold ${
+                                            errors.price_level_2
+                                              ? "border-red-300 bg-red-50"
+                                              : "border-gray-300 hover:border-gray-400 bg-white"
+                                          }`}
+                                          placeholder="$ 0,00"
+                                        />
+                                        {errors.price_level_2 && (
+                                          <p className="mt-2 text-sm text-red-600 flex items-center">
+                                            <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+                                            {errors.price_level_2}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      {/* Precio de venta 3 */}
+                                      <div>
+                                        <label
+                                          htmlFor="price_level_3"
+                                          className="block text-sm font-medium text-gray-700 mb-2"
+                                        >
+                                          Precio de venta 3 * {formData.unit_type === "kg" && "(por kg)"}
+                                        </label>
+                                        <NumericFormat
+                                          name="price_level_3"
+                                          value={formData.price_level_3}
+                                          onValueChange={(values) => handlePriceChange("price_level_3", values)}
+                                          thousandSeparator="."
+                                          decimalSeparator=","
+                                          prefix="$ "
+                                          decimalScale={2}
+                                          allowNegative={false}
+                                          className={`block w-full px-4 py-3 border rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-lg font-semibold ${
+                                            errors.price_level_3
+                                              ? "border-red-300 bg-red-50"
+                                              : "border-gray-300 hover:border-gray-400 bg-white"
+                                          }`}
+                                          placeholder="$ 0,00"
+                                        />
+                                        {errors.price_level_3 && (
+                                          <p className="mt-2 text-sm text-red-600 flex items-center">
+                                            <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+                                            {errors.price_level_3}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                      <div className="flex items-start">
+                                        <InformationCircleIcon className="h-5 w-5 text-blue-600 mt-0.5 mr-2" />
+                                        <div className="text-sm text-blue-800">
+                                          <p className="font-medium">Niveles de precios:</p>
+                                          <ul className="mt-1 list-disc list-inside space-y-1 text-xs">
+                                            <li>Precio 1: Precio base o mayorista</li>
+                                            <li>Precio 2: Precio minorista</li>
+                                            <li>Precio 3: Precio premium o especial</li>
+                                          </ul>
+                                        </div>
+                                      </div>
+                                    </div>
                                   </div>
 
                                   {/* Costo */}
-                                  <div>
-                                    <label htmlFor="cost" className="block text-sm font-medium text-gray-700 mb-2">
-                                      Costo del producto {formData.unit_type === "kg" && "(por kg)"}
-                                    </label>
-                                    <NumericFormat
-                                      name="cost"
-                                      value={formData.cost}
-                                      onValueChange={(values) => handlePriceChange("cost", values)}
-                                      thousandSeparator="."
-                                      decimalSeparator=","
-                                      prefix="$ "
-                                      decimalScale={2}
-                                      allowNegative={false}
-                                      className={`block w-full px-4 py-3 border rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                                        errors.cost
-                                          ? "border-red-300 bg-red-50"
-                                          : "border-gray-300 hover:border-gray-400 bg-white"
-                                      }`}
-                                      placeholder="$ 0,00"
-                                    />
-                                    {errors.cost && (
-                                      <p className="mt-2 text-sm text-red-600 flex items-center">
-                                        <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
-                                        {errors.cost}
-                                      </p>
-                                    )}
+                                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                                    <h4 className="text-md font-medium text-gray-900 mb-4">Costo del Producto</h4>
+                                    <div className="max-w-md">
+                                      <label htmlFor="cost" className="block text-sm font-medium text-gray-700 mb-2">
+                                        Costo del producto {formData.unit_type === "kg" && "(por kg)"}
+                                      </label>
+                                      <NumericFormat
+                                        name="cost"
+                                        value={formData.cost}
+                                        onValueChange={(values) => handlePriceChange("cost", values)}
+                                        thousandSeparator="."
+                                        decimalSeparator=","
+                                        prefix="$ "
+                                        decimalScale={2}
+                                        allowNegative={false}
+                                        className={`block w-full px-4 py-3 border rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                                          errors.cost
+                                            ? "border-red-300 bg-red-50"
+                                            : "border-gray-300 hover:border-gray-400 bg-white"
+                                        }`}
+                                        placeholder="$ 0,00"
+                                      />
+                                      {errors.cost && (
+                                        <p className="mt-2 text-sm text-red-600 flex items-center">
+                                          <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+                                          {errors.cost}
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
 
-                                {/* Información de margen */}
-                                {formData.price && formData.cost && (
+                                {formData.price_level_1 && formData.cost && (
                                   <div className="mt-6 p-4 bg-white rounded-lg border border-green-200">
-                                    <div className="grid grid-cols-3 gap-4 text-center">
-                                      <div>
-                                        <p className="text-xs text-gray-500 mb-1">
-                                          Precio de Venta {formData.unit_type === "kg" && "(por kg)"}
-                                        </p>
-                                        <p className="text-lg font-bold text-green-600">
-                                          $
-                                          {Number.parseFloat(formData.price).toLocaleString("es-AR", {
-                                            minimumFractionDigits: 2,
-                                          })}
-                                        </p>
-                                      </div>
+                                    <h4 className="text-md font-medium text-gray-900 mb-3">Análisis de Márgenes</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
                                       <div>
                                         <p className="text-xs text-gray-500 mb-1">
                                           Costo {formData.unit_type === "kg" && "(por kg)"}
@@ -833,22 +952,29 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
                                           })}
                                         </p>
                                       </div>
-                                      <div>
-                                        <p className="text-xs text-gray-500 mb-1">Margen</p>
-                                        <p className="text-lg font-bold text-blue-600">{calculateMargin()}%</p>
-                                      </div>
-                                    </div>
-                                    <div className="mt-3 text-center">
-                                      <p className="text-sm text-gray-600">
-                                        Ganancia por {formData.unit_type === "kg" ? "kilogramo" : "unidad"}:{" "}
-                                        <span className="font-semibold text-green-600">
-                                          $
-                                          {(
-                                            Number.parseFloat(formData.price || 0) -
-                                            Number.parseFloat(formData.cost || 0)
-                                          ).toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-                                        </span>
-                                      </p>
+                                      {[1, 2, 3].map((level) => (
+                                        <div key={level}>
+                                          <p className="text-xs text-gray-500 mb-1">
+                                            Precio {level} - Margen {calculateMargin(level)}%
+                                          </p>
+                                          <p className="text-lg font-bold text-green-600">
+                                            $
+                                            {Number.parseFloat(formData[`price_level_${level}`] || 0).toLocaleString(
+                                              "es-AR",
+                                              {
+                                                minimumFractionDigits: 2,
+                                              },
+                                            )}
+                                          </p>
+                                          <p className="text-xs text-blue-600 mt-1">
+                                            Ganancia: $
+                                            {(
+                                              Number.parseFloat(formData[`price_level_${level}`] || 0) -
+                                              Number.parseFloat(formData.cost || 0)
+                                            ).toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                                          </p>
+                                        </div>
+                                      ))}
                                     </div>
                                   </div>
                                 )}

@@ -8,21 +8,10 @@ import { useSalesStore } from "../../stores/salesStore"
 import { useToast } from "../../contexts/ToastContext"
 import { formatCurrency, formatStock } from "../../lib/formatters"
 import Button from "../common/Button"
-import {
-  XMarkIcon,
-  ScaleIcon,
-  CurrencyDollarIcon,
-  PlusIcon,
-  CubeIcon,
-} from "@heroicons/react/24/outline"
+import { XMarkIcon, ScaleIcon, CurrencyDollarIcon, PlusIcon, CubeIcon, TagIcon } from "@heroicons/react/24/outline"
 
 const QuantityModal = () => {
-  const {
-    showQuantityModal,
-    setShowQuantityModal,
-    selectedProduct,
-    addToCart,
-  } = useSalesStore()
+  const { showQuantityModal, setShowQuantityModal, selectedProduct, addToCart } = useSalesStore()
 
   const { showToast } = useToast()
 
@@ -32,6 +21,7 @@ const QuantityModal = () => {
   const [quantityInput, setQuantityInput] = useState("")
   const [calculatedQuantity, setCalculatedQuantity] = useState(0)
   const [calculatedAmount, setCalculatedAmount] = useState(0)
+  const [selectedPriceLevel, setSelectedPriceLevel] = useState(1)
 
   const amountInputRef = useRef(null)
   const quantityInputRef = useRef(null)
@@ -39,10 +29,13 @@ const QuantityModal = () => {
   // Reset cuando se abre el modal
   useEffect(() => {
     if (showQuantityModal && selectedProduct) {
+      setSelectedPriceLevel(1) // Default to price level 1
+
       if (selectedProduct.unit_type === "kg") {
         // Para productos por kg, empezar en modo importe
         setInputMode("amount")
-        const suggestedAmount = Math.ceil(selectedProduct.price * 0.25 / 100) * 100 // ~250g
+        const currentPrice = selectedProduct.price_level_1 || selectedProduct.price
+        const suggestedAmount = Math.ceil((currentPrice * 0.25) / 100) * 100 // ~250g
         setAmountInput(suggestedAmount.toString())
         setQuantityInput("0.25")
       } else {
@@ -69,34 +62,70 @@ const QuantityModal = () => {
     }
   }, [inputMode, showQuantityModal])
 
-  // Calcular valores cuando cambia el input
+  // Obtener precio actual según el nivel seleccionado
+  const getCurrentPrice = () => {
+    if (!selectedProduct) return 0
+
+    switch (selectedPriceLevel) {
+      case 2:
+        return selectedProduct.price_level_2 || selectedProduct.price
+      case 3:
+        return selectedProduct.price_level_3 || selectedProduct.price
+      default:
+        return selectedProduct.price_level_1 || selectedProduct.price
+    }
+  }
+
+  // Calcular valores cuando cambia el input o el nivel de precio
   useEffect(() => {
     if (!selectedProduct) return
 
+    const currentPrice = getCurrentPrice()
+
     if (inputMode === "amount" && amountInput) {
-      const amount = parseFloat(amountInput) || 0
+      const amount = Number.parseFloat(amountInput) || 0
       if (amount > 0) {
-        const quantity = amount / selectedProduct.price
+        const quantity = amount / currentPrice
         // Round quantity to 2 decimal places for kg products
-        setCalculatedQuantity(selectedProduct.unit_type === "kg" ? Math.round(quantity * 100) / 100 : quantity);
+        setCalculatedQuantity(selectedProduct.unit_type === "kg" ? Math.round(quantity * 100) / 100 : quantity)
         setCalculatedAmount(amount)
       } else {
-        setCalculatedQuantity(0);
-        setCalculatedAmount(0);
+        setCalculatedQuantity(0)
+        setCalculatedAmount(0)
       }
     } else if (inputMode === "quantity" && quantityInput) {
-      const quantity = parseFloat(quantityInput) || 0
+      const quantity = Number.parseFloat(quantityInput) || 0
       if (quantity > 0) {
-        const amount = quantity * selectedProduct.price
+        const amount = quantity * currentPrice
         setCalculatedAmount(Math.round(amount * 100) / 100)
         // Round quantity to 2 decimal places for kg products
-        setCalculatedQuantity(selectedProduct.unit_type === "kg" ? Math.round(quantity * 100) / 100 : quantity);
+        setCalculatedQuantity(selectedProduct.unit_type === "kg" ? Math.round(quantity * 100) / 100 : quantity)
       } else {
-        setCalculatedQuantity(0);
-        setCalculatedAmount(0);
+        setCalculatedQuantity(0)
+        setCalculatedAmount(0)
       }
     }
-  }, [amountInput, quantityInput, inputMode, selectedProduct])
+  }, [amountInput, quantityInput, inputMode, selectedProduct, selectedPriceLevel])
+
+  // Recalcular cuando cambia el nivel de precio
+  useEffect(() => {
+    if (!selectedProduct) return
+
+    const currentPrice = getCurrentPrice()
+
+    if (inputMode === "amount" && selectedProduct.unit_type === "kg") {
+      // Recalcular cantidad basada en el nuevo precio
+      const suggestedAmount = Math.ceil((currentPrice * 0.25) / 100) * 100
+      setAmountInput(suggestedAmount.toString())
+    } else if (inputMode === "quantity" && quantityInput) {
+      // Recalcular importe basado en el nuevo precio
+      const quantity = Number.parseFloat(quantityInput) || 0
+      if (quantity > 0) {
+        const amount = quantity * currentPrice
+        setCalculatedAmount(Math.round(amount * 100) / 100)
+      }
+    }
+  }, [selectedPriceLevel])
 
   const handleAmountChange = (values) => {
     const { floatValue } = values
@@ -121,7 +150,10 @@ const QuantityModal = () => {
     }
 
     if (finalQuantity > selectedProduct.stock) {
-      showToast(`Stock insuficiente. Disponible: ${formatStock(selectedProduct.stock, selectedProduct.unit_type)}`, "error")
+      showToast(
+        `Stock insuficiente. Disponible: ${formatStock(selectedProduct.stock, selectedProduct.unit_type)}`,
+        "error",
+      )
       return
     }
 
@@ -130,13 +162,14 @@ const QuantityModal = () => {
       return
     }
 
-    // Pass the final calculated quantity and amount to addToCart
-    addToCart(selectedProduct, finalQuantity, finalAmount)
-    
-    const message = selectedProduct.unit_type === "kg" 
-      ? `Agregado: ${formatStock(finalQuantity, "kg")} de ${selectedProduct.name} por ${formatCurrency(finalAmount)}`
-      : `Agregado: ${finalQuantity} ${selectedProduct.name} por ${formatCurrency(finalAmount)}`
-    
+    // Pass the final calculated quantity, amount, and price level to addToCart
+    addToCart(selectedProduct, finalQuantity, finalAmount, selectedPriceLevel)
+
+    const message =
+      selectedProduct.unit_type === "kg"
+        ? `Agregado: ${formatStock(finalQuantity, "kg")} de ${selectedProduct.name} por ${formatCurrency(finalAmount)} (Precio ${selectedPriceLevel})`
+        : `Agregado: ${finalQuantity} ${selectedProduct.name} por ${formatCurrency(finalAmount)} (Precio ${selectedPriceLevel})`
+
     showToast(message, "success")
 
     // Cerrar modal
@@ -161,7 +194,9 @@ const QuantityModal = () => {
   // Valores rápidos
   const getQuickValues = () => {
     if (!selectedProduct) return []
-    
+
+    const currentPrice = getCurrentPrice()
+
     if (selectedProduct.unit_type === "kg") {
       if (inputMode === "amount") {
         return [
@@ -193,6 +228,10 @@ const QuantityModal = () => {
   if (!selectedProduct) return null
 
   const isKgProduct = selectedProduct.unit_type === "kg"
+  const currentPrice = getCurrentPrice()
+
+  // Verificar si el producto tiene múltiples niveles de precios
+  const hasMultiplePrices = selectedProduct.price_level_2 || selectedProduct.price_level_3
 
   return (
     <Transition appear show={showQuantityModal} as={Fragment}>
@@ -224,9 +263,11 @@ const QuantityModal = () => {
                 {/* Header compacto */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-100">
                   <div className="flex items-center space-x-2">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      isKgProduct ? "bg-blue-100" : "bg-green-100"
-                    }`}>
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        isKgProduct ? "bg-blue-100" : "bg-green-100"
+                      }`}
+                    >
                       {isKgProduct ? (
                         <ScaleIcon className="h-4 w-4 text-blue-600" />
                       ) : (
@@ -252,15 +293,46 @@ const QuantityModal = () => {
 
                 {/* Contenido compacto */}
                 <div className="p-4 space-y-4">
+                  {hasMultiplePrices && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <TagIcon className="h-4 w-4 inline mr-1" />
+                        Nivel de precio:
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[1, 2, 3].map((level) => {
+                          const price =
+                            selectedProduct[`price_level_${level}`] || (level === 1 ? selectedProduct.price : null)
+                          if (!price) return null
+
+                          return (
+                            <button
+                              key={level}
+                              onClick={() => setSelectedPriceLevel(level)}
+                              className={`p-2 rounded-lg border-2 transition-all text-xs ${
+                                selectedPriceLevel === level
+                                  ? level === 1
+                                    ? "border-green-500 bg-green-50 text-green-700"
+                                    : level === 2
+                                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                                      : "border-purple-500 bg-purple-50 text-purple-700"
+                                  : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                              }`}
+                            >
+                              <div className="font-medium">Precio {level}</div>
+                              <div className="font-bold">{formatCurrency(price)}</div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Información del producto */}
                   <div className="bg-gray-50 rounded-lg p-3 text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600">
-                        Precio {isKgProduct ? "por kg" : "unitario"}:
-                      </span>
-                      <span className="font-semibold text-gray-900">
-                        {formatCurrency(selectedProduct.price)}
-                      </span>
+                      <span className="text-gray-600">Precio {isKgProduct ? "por kg" : "unitario"}:</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(currentPrice)}</span>
                     </div>
                     <div className="flex justify-between items-center mt-1">
                       <span className="text-gray-600">Stock:</span>
@@ -300,11 +372,9 @@ const QuantityModal = () => {
 
                   {/* Input principal */}
                   <div className="space-y-3">
-                    {(inputMode === "amount" && isKgProduct) ? (
+                    {inputMode === "amount" && isKgProduct ? (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Importe en pesos:
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Importe en pesos:</label>
                         <NumericFormat
                           getInputRef={amountInputRef}
                           value={amountInput}
@@ -361,7 +431,7 @@ const QuantityModal = () => {
                   </div>
 
                   {/* Resultado calculado */}
-                  {(calculatedQuantity > 0 && calculatedAmount > 0) && (
+                  {calculatedQuantity > 0 && calculatedAmount > 0 && (
                     <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                       <div className="text-center text-sm">
                         <div className="flex justify-between items-center">
@@ -372,10 +442,14 @@ const QuantityModal = () => {
                         </div>
                         <div className="flex justify-between items-center mt-1">
                           <span className="text-blue-600">Total:</span>
-                          <span className="font-semibold text-blue-900">
-                            {formatCurrency(calculatedAmount)}
-                          </span>
+                          <span className="font-semibold text-blue-900">{formatCurrency(calculatedAmount)}</span>
                         </div>
+                        {hasMultiplePrices && (
+                          <div className="flex justify-between items-center mt-1">
+                            <span className="text-blue-600">Precio:</span>
+                            <span className="font-semibold text-blue-900">Nivel {selectedPriceLevel}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -383,20 +457,14 @@ const QuantityModal = () => {
                   {/* Validación de stock */}
                   {calculatedQuantity > selectedProduct.stock && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-2">
-                      <p className="text-xs text-red-700 text-center">
-                        ⚠️ Excede el stock disponible
-                      </p>
+                      <p className="text-xs text-red-700 text-center">⚠️ Excede el stock disponible</p>
                     </div>
                   )}
                 </div>
 
                 {/* Footer compacto */}
                 <div className="flex gap-2 p-4 border-t border-gray-100 bg-gray-50">
-                  <Button
-                    variant="outline"
-                    onClick={handleCancel}
-                    className="flex-1 text-sm py-2"
-                  >
+                  <Button variant="outline" onClick={handleCancel} className="flex-1 text-sm py-2 bg-transparent">
                     Cancelar
                   </Button>
                   <Button

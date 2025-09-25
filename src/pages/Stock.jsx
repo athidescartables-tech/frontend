@@ -107,8 +107,6 @@ const Stock = () => {
     return () => clearTimeout(timeoutId)
   }, [searchQuery, filters, fetchProducts])
 
-
-
   // Función para manejar cambio de página
   const handlePageChange = useCallback((newPage) => {
     setFilters((prev) => ({ ...prev, page: newPage }))
@@ -335,7 +333,7 @@ const Stock = () => {
                       Categoría
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Precio
+                      Precios
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Stock
@@ -420,8 +418,29 @@ const Stock = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div>
-                            {formatCurrency(product.price)}
+                          <div className="space-y-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs text-gray-500 w-8">P1:</span>
+                              <span className="font-medium text-green-600">
+                                {formatCurrency(product.price_level_1 || product.price)}
+                              </span>
+                            </div>
+                            {product.price_level_2 && (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs text-gray-500 w-8">P2:</span>
+                                <span className="font-medium text-blue-600">
+                                  {formatCurrency(product.price_level_2)}
+                                </span>
+                              </div>
+                            )}
+                            {product.price_level_3 && (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs text-gray-500 w-8">P3:</span>
+                                <span className="font-medium text-purple-600">
+                                  {formatCurrency(product.price_level_3)}
+                                </span>
+                              </div>
+                            )}
                             {product.unit_type === "kg" && <div className="text-xs text-gray-500">por kg</div>}
                           </div>
                         </td>

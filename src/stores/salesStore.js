@@ -63,7 +63,7 @@ export const useSalesStore = create((set, get) => ({
   openQuantityModal: (product) => {
     set({
       selectedProduct: product,
-      showQuantityModal: true
+      showQuantityModal: true,
     })
   },
 
@@ -128,49 +128,56 @@ export const useSalesStore = create((set, get) => ({
     })
   },
 
-  // ACTUALIZADO: Acciones del carrito con soporte para unidades de medida y total exacto
-  addToCart: (product, quantity, itemTotalPrice) => { // itemTotalPrice is the finalAmount from QuantityModal
+  // ACTUALIZADO: Acciones del carrito con soporte para unidades de medida, total exacto y nivel de precios
+  addToCart: (product, quantity, itemTotalPrice, priceLevel = 1) => {
+    // itemTotalPrice is the finalAmount from QuantityModal
+    // priceLevel indicates which price level was used (1, 2, or 3)
     set((state) => {
       // Validate quantity against product stock
       if (quantity > product.stock) {
-        console.warn(`Stock insuficiente para ${product.name}. Disponible: ${product.stock}, Solicitado: ${quantity}`);
-        return state;
+        console.warn(`Stock insuficiente para ${product.name}. Disponible: ${product.stock}, Solicitado: ${quantity}`)
+        return state
       }
       // Validate quantity format (e.g., for kg products, ensure it's valid decimal)
       if (!validateQuantity(quantity, product.unit_type)) {
-        console.warn(`Cantidad inválida para producto ${product.name}: ${quantity}`);
-        return state;
+        console.warn(`Cantidad inválida para producto ${product.name}: ${quantity}`)
+        return state
       }
 
-      const existingItemIndex = state.cart.findIndex((item) => item.id === product.id);
+      const existingItemIndex = state.cart.findIndex(
+        (item) => item.id === product.id && item.price_level === priceLevel,
+      )
 
-      let newCart;
-      let itemToAddOrUpdate = {
+      let newCart
+      const itemToAddOrUpdate = {
         ...product,
         quantity: quantity, // This is the final, rounded quantity from QuantityModal
         totalPrice: itemTotalPrice, // This is the final, rounded total amount for the item from QuantityModal
         unit_type: product.unit_type || "unidades",
-      };
+        price_level: priceLevel,
+        unit_price:
+          priceLevel === 1 ? product.price_level_1 : priceLevel === 2 ? product.price_level_2 : product.price_level_3,
+      }
 
       if (existingItemIndex !== -1) {
-        // If item exists, replace it with the new calculated quantity and total price from the modal.
+        // If item exists with same price level, replace it with the new calculated quantity and total price from the modal.
         // This assumes the modal is always used to set the *exact* quantity/amount for an item.
-        newCart = state.cart.map((item, index) => (index === existingItemIndex ? itemToAddOrUpdate : item));
+        newCart = state.cart.map((item, index) => (index === existingItemIndex ? itemToAddOrUpdate : item))
       } else {
         // Add new item
-        newCart = [...state.cart, itemToAddOrUpdate];
+        newCart = [...state.cart, itemToAddOrUpdate]
       }
 
       // Recalculate cartTotal by summing totalPrice of all items
-      const cartTotal = newCart.reduce((sum, item) => sum + item.totalPrice, 0);
+      const cartTotal = newCart.reduce((sum, item) => sum + item.totalPrice, 0)
 
       // Update payment methods if in multiple payment mode
-      let updatedPaymentMethods = state.paymentMethods;
+      let updatedPaymentMethods = state.paymentMethods
       if (state.multiplePaymentMode && state.paymentMethods.length > 0) {
-        const finalSaleTotal = cartTotal - state.cartDiscount + state.cartTax;
-        updatedPaymentMethods = [...state.paymentMethods];
+        const finalSaleTotal = cartTotal - state.cartDiscount + state.cartTax
+        updatedPaymentMethods = [...state.paymentMethods]
         if (updatedPaymentMethods.length === 1) {
-          updatedPaymentMethods[0] = { ...updatedPaymentMethods[0], amount: finalSaleTotal };
+          updatedPaymentMethods[0] = { ...updatedPaymentMethods[0], amount: finalSaleTotal }
         }
       }
 
@@ -178,8 +185,8 @@ export const useSalesStore = create((set, get) => ({
         cart: newCart,
         cartTotal,
         paymentMethods: updatedPaymentMethods,
-      };
-    });
+      }
+    })
   },
 
   removeFromCart: (productId) => {
@@ -218,19 +225,21 @@ export const useSalesStore = create((set, get) => ({
 
       // Validate quantity according to unit type (e.g., integer for units, decimal for kg)
       // And round quantity for kg products to 2 decimal places
-      let validatedQuantity = quantity;
+      let validatedQuantity = quantity
       if (item.unit_type === "kg") {
-        validatedQuantity = Math.round(quantity * 100) / 100; // Round to 2 decimal places
+        validatedQuantity = Math.round(quantity * 100) / 100 // Round to 2 decimal places
       }
       if (!validateQuantity(validatedQuantity, item.unit_type)) {
-        console.warn(`Cantidad inválida para producto ${item.name}: ${validatedQuantity}`);
-        return state;
+        console.warn(`Cantidad inválida para producto ${item.name}: ${validatedQuantity}`)
+        return state
       }
 
       // Check available stock
       if (validatedQuantity > item.stock) {
-        console.warn(`Stock insuficiente para ${item.name}. Disponible: ${item.stock}, Solicitado: ${validatedQuantity}`);
-        return state;
+        console.warn(
+          `Stock insuficiente para ${item.name}. Disponible: ${item.stock}, Solicitado: ${validatedQuantity}`,
+        )
+        return state
       }
 
       const newCart = state.cart.map((cartItem) =>
@@ -238,9 +247,9 @@ export const useSalesStore = create((set, get) => ({
           ? {
               ...cartItem,
               quantity: validatedQuantity,
-              totalPrice: validatedQuantity * cartItem.price, // Recalculate totalPrice based on new quantity and unit price
+              totalPrice: validatedQuantity * cartItem.unit_price, // Recalculate totalPrice based on new quantity and unit price
             }
-          : cartItem
+          : cartItem,
       )
       const cartTotal = newCart.reduce((sum, item) => sum + item.totalPrice, 0)
 
@@ -345,7 +354,7 @@ export const useSalesStore = create((set, get) => ({
     set({ showPaymentModal: show })
   },
 
-  // CORREGIDO: Procesar venta con validación de caja abierta
+  // CORREGIDO: Procesar venta con soporte para niveles de precios
   processSale: async (paymentData) => {
     const state = get()
 
@@ -410,11 +419,12 @@ export const useSalesStore = create((set, get) => ({
         items: state.cart.map((item) => ({
           product_id: item.id,
           quantity: item.quantity,
-          unit_price: item.price,
+          unit_price: item.unit_price, // Use the actual unit price from the selected level
           // Pass the exact total price for the item if it was amount-based for kg products
           // This ensures the backend receives the correct amount for the line item
-          total_price: item.totalPrice, 
+          total_price: item.totalPrice,
           unit_type: item.unit_type,
+          price_level: item.price_level,
         })),
         subtotal: state.cartTotal,
         discount: state.cartDiscount,
@@ -564,10 +574,10 @@ export const useSalesStore = create((set, get) => ({
           sales: state.sales.map((sale) =>
             sale.id === id
               ? {
-                ...sale,
-                status: "cancelled",
-                notes: sale.notes ? `${sale.notes} - Cancelada: ${reason}` : `Cancelada: ${reason}`,
-              }
+                  ...sale,
+                  status: "cancelled",
+                  notes: sale.notes ? `${sale.notes} - Cancelada: ${reason}` : `Cancelada: ${reason}`,
+                }
               : sale,
           ),
           loading: false,

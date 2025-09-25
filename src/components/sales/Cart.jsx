@@ -5,13 +5,7 @@ import { useSalesStore } from "../../stores/salesStore"
 import { formatCurrency, formatStock, validateQuantity, getUnitLabel } from "../../lib/formatters"
 import { PAYMENT_METHODS } from "../../lib/constants"
 import Button from "../common/Button"
-import {
-  TrashIcon,
-  MinusIcon,
-  PlusIcon,
-  ShoppingCartIcon,
-  PhotoIcon,
-} from "@heroicons/react/24/outline"
+import { TrashIcon, MinusIcon, PlusIcon, ShoppingCartIcon, PhotoIcon, TagIcon } from "@heroicons/react/24/outline"
 
 const Cart = () => {
   const {
@@ -25,12 +19,10 @@ const Cart = () => {
     setShowPaymentModal,
   } = useSalesStore()
 
-
   const [editingQuantity, setEditingQuantity] = useState(null)
   const [tempQuantity, setTempQuantity] = useState("")
-  
-   const finalTotal = cartTotal // SIN descuentos
 
+  const finalTotal = cartTotal // SIN descuentos
 
   const handleQuantityChange = (item, delta) => {
     const currentQuantity = item.quantity
@@ -58,9 +50,13 @@ const Cart = () => {
     const newQuantity = Number.parseFloat(tempQuantity)
 
     // Round newQuantity to 2 decimal places for kg products
-    const roundedNewQuantity = item.unit_type === "kg" ? Math.round(newQuantity * 100) / 100 : newQuantity;
+    const roundedNewQuantity = item.unit_type === "kg" ? Math.round(newQuantity * 100) / 100 : newQuantity
 
-    if (validateQuantity(roundedNewQuantity, item.unit_type) && roundedNewQuantity > 0 && roundedNewQuantity <= item.stock) {
+    if (
+      validateQuantity(roundedNewQuantity, item.unit_type) &&
+      roundedNewQuantity > 0 &&
+      roundedNewQuantity <= item.stock
+    ) {
       updateCartItemQuantity(item.id, roundedNewQuantity)
     } else {
       // Revert to original quantity if invalid
@@ -73,6 +69,19 @@ const Cart = () => {
   const cancelQuantityEdit = () => {
     setEditingQuantity(null)
     setTempQuantity("")
+  }
+
+  const getPriceLevelColor = (level) => {
+    switch (level) {
+      case 1:
+        return "text-green-600 bg-green-50"
+      case 2:
+        return "text-blue-600 bg-blue-50"
+      case 3:
+        return "text-purple-600 bg-purple-50"
+      default:
+        return "text-gray-600 bg-gray-50"
+    }
   }
 
   if (cart.length === 0) {
@@ -114,7 +123,7 @@ const Cart = () => {
       <div className="flex-1 overflow-y-auto">
         {cart.map((item) => (
           <div
-            key={item.id}
+            key={`${item.id}-${item.price_level || 1}`}
             className="px-4 py-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center space-x-2">
@@ -123,18 +132,29 @@ const Cart = () => {
                 {item.image ? (
                   <img src={item.image || "/placeholder.svg"} alt={item.name} className="h-full w-full object-cover" />
                 ) : (
-                  <PhotoIcon className="h-4 w-4 text-gray-400" /> 
+                  <PhotoIcon className="h-4 w-4 text-gray-400" />
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
                 {/* Nombre y precio unitario */}
-                <h4 className="text-sm font-medium text-gray-900 truncate">
-                  {item.name}
-                  <span className="text-xs text-gray-500 ml-1">
-                    ({formatCurrency(item.price)}/{getUnitLabel(item.unit_type)})
-                  </span>
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium text-gray-900 truncate">
+                    {item.name}
+                    <span className="text-xs text-gray-500 ml-1">
+                      ({formatCurrency(item.unit_price || item.price)}/{getUnitLabel(item.unit_type)})
+                    </span>
+                  </h4>
+                  {item.price_level && item.price_level > 1 && (
+                    <span
+                      className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${getPriceLevelColor(
+                        item.price_level,
+                      )}`}
+                    >
+                      <TagIcon className="h-3 w-3 mr-0.5" />P{item.price_level}
+                    </span>
+                  )}
+                </div>
                 {/* Descripción */}
                 {item.description && <p className="text-xs text-gray-500 line-clamp-1">{item.description}</p>}
 
@@ -204,7 +224,7 @@ const Cart = () => {
 
                 {/* Advertencia de stock */}
                 {item.quantity >= item.stock && (
-                  <p className="text-xs text-red-500 font-medium mt-0.5">Stock máximo alcanzado</p> 
+                  <p className="text-xs text-red-500 font-medium mt-0.5">Stock máximo alcanzado</p>
                 )}
               </div>
             </div>
