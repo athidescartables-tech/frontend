@@ -1,7 +1,7 @@
 import axios from "axios"
 
 // Configuración base de la API
-const API_BASE_URL = import.meta.env.VITE_API_URL ||  "https://web-production-f003f.up.railway.app"
+const API_BASE_URL = import.meta.env.VITE_API_URL ||  "https://web-production-f003f.up.railway.app/api"
 
 
 // NUEVO: Cache simple para requests GET
