@@ -51,6 +51,11 @@ export const useSalesStore = create((set, get) => ({
   // Estado de UI
   showPaymentModal: false,
 
+  // NUEVO: Estado para impresión de tickets
+  showPrintTicketModal: false,
+  showTicketPreviewModal: false,
+  lastCompletedSale: null,
+
   // Acciones básicas
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
@@ -58,6 +63,11 @@ export const useSalesStore = create((set, get) => ({
   // NUEVO: Acciones para modal de cantidad
   setShowQuantityModal: (show) => set({ showQuantityModal: show }),
   setSelectedProduct: (product) => set({ selectedProduct: product }),
+
+  // NUEVO: Acciones para modales de tickets
+  setShowPrintTicketModal: (show) => set({ showPrintTicketModal: show }),
+  setShowTicketPreviewModal: (show) => set({ showTicketPreviewModal: show }),
+  setLastCompletedSale: (sale) => set({ lastCompletedSale: sale }),
 
   // Función para abrir modal de cantidad con producto
   openQuantityModal: (product) => {
@@ -354,7 +364,7 @@ export const useSalesStore = create((set, get) => ({
     set({ showPaymentModal: show })
   },
 
-  // CORREGIDO: Procesar venta con soporte para niveles de precios
+  // CORREGIDO: Procesar venta con soporte para impresión de tickets
   processSale: async (paymentData) => {
     const state = get()
 
@@ -460,6 +470,7 @@ export const useSalesStore = create((set, get) => ({
         set((state) => ({
           sales: [sale, ...state.sales],
           currentSale: sale,
+          lastCompletedSale: sale, // Guardar la venta completada para impresión
           loading: false,
         }))
 
@@ -481,6 +492,9 @@ export const useSalesStore = create((set, get) => ({
         await cashStore.fetchCurrentStatus()
 
         console.log("🎉 === VENTA PROCESADA EXITOSAMENTE ===")
+
+        set({ showPrintTicketModal: true })
+
         return { success: true, sale }
       } else {
         throw new Error(response.data.message || "Error al procesar la venta")

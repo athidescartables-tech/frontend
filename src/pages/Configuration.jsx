@@ -1,12 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { useAuth } from "@/contexts/AuthContext"
-import Card from "@/components/common/Card"
+import { useAuth } from "../contexts/AuthContext"
+import Card from "../components/common/Card"
 import LoadingButton from "../components/common/LoandingButton"
-import { useToast } from "@/contexts/ToastContext"
-import { UserCircleIcon, KeyIcon, UsersIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline"
-import UserManagement from "@/components/config/UserManagement"
+import { useToast } from "../contexts/ToastContext"
+import { UserCircleIcon, KeyIcon, UsersIcon, EyeIcon, EyeSlashIcon, PrinterIcon } from "@heroicons/react/24/outline"
+import UserManagement from "../components/config/UserManagement"
+import TicketConfig from "../components/config/TicketConfig"
 
 const Configuration = () => {
   const { user, changePassword, loading } = useAuth()
@@ -123,6 +124,7 @@ const Configuration = () => {
     { id: "profile", name: "Mi Perfil", icon: UserCircleIcon },
     { id: "password", name: "Cambiar Contraseña", icon: KeyIcon },
     { id: "users", name: "Usuarios", icon: UsersIcon },
+    { id: "tickets", name: "Configuración de Tickets", icon: PrinterIcon },
   ]
 
   return (
@@ -337,6 +339,8 @@ const Configuration = () => {
         )}
 
         {activeTab === "users" && <UserManagement />}
+
+        {activeTab === "tickets" && <TicketConfig />}
       </div>
     </div>
   )

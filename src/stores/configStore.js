@@ -32,7 +32,6 @@ export const useConfigStore = create(
         backupFrequency: "daily", // daily, weekly, monthly
       },
 
-      // Configuración de impresión
       printConfig: {
         printerName: "",
         paperSize: "A4", // A4, Letter, Thermal
@@ -47,6 +46,13 @@ export const useConfigStore = create(
         includeFooter: true,
         includeBarcode: false,
         fontSize: 12,
+        // Configuraciones específicas para tickets
+        ticketWidth: 80, // mm (58, 80, 110)
+        showLogo: true,
+        showCompanyInfo: true,
+        showThankYouMessage: true,
+        thankYouMessage: "¡Gracias por su compra!",
+        autoPrint: false,
       },
 
       // Configuración de notificaciones

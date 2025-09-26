@@ -11,6 +11,8 @@ import ProductList from "../components/sales/ProductList"
 import Cart from "../components/sales/Cart"
 import PaymentModal from "../components/sales/PaymentModal"
 import QuantityModal from "../components/sales/QuantityModal"
+import PrintTicketModal from "../components/sales/PrintTicketModal"
+import TicketPreviewModal from "../components/sales/TicketPreviewModal"
 import { Squares2X2Icon, ListBulletIcon, ArrowPathIcon } from "@heroicons/react/24/outline"
 
 const Sales = () => {
@@ -19,7 +21,15 @@ const Sales = () => {
   const { fetchTopSellingProducts, topSellingProducts, loading } = useProductStore()
   const { fetchCategories } = useCategoryStore()
   const { initializeStore: initializeCustomerStore } = useCustomerStore()
-  const { setCustomer, customer } = useSalesStore()
+  const {
+    setCustomer,
+    customer,
+    showPrintTicketModal,
+    setShowPrintTicketModal,
+    showTicketPreviewModal,
+    setShowTicketPreviewModal,
+    lastCompletedSale,
+  } = useSalesStore()
 
   // NUEVO: Ref para controlar inicialización
   const isInitialized = useRef(false)
@@ -79,6 +89,19 @@ const Sales = () => {
     }
   }
 
+  const handlePrintTicket = () => {
+    setShowPrintTicketModal(false)
+    setShowTicketPreviewModal(true)
+  }
+
+  const handleSkipTicket = () => {
+    setShowPrintTicketModal(false)
+  }
+
+  const handleCloseTicketPreview = () => {
+    setShowTicketPreviewModal(false)
+  }
+
   return (
     <div className="space-y-6">
       {/* Header ACTUALIZADO con botón de refresh */}
@@ -104,20 +127,22 @@ const Sales = () => {
             <span className="text-sm text-gray-500 mr-2">Vista:</span>
             <button
               onClick={() => setViewMode("grid")}
-              className={`p-2 rounded-md transition-colors ${viewMode === "grid"
+              className={`p-2 rounded-md transition-colors ${
+                viewMode === "grid"
                   ? "bg-primary-100 text-primary-600"
                   : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                }`}
+              }`}
               title="Vista en tarjetas"
             >
               <Squares2X2Icon className="h-5 w-5" />
             </button>
             <button
               onClick={() => setViewMode("list")}
-              className={`p-2 rounded-md transition-colors ${viewMode === "list"
+              className={`p-2 rounded-md transition-colors ${
+                viewMode === "list"
                   ? "bg-primary-100 text-primary-600"
                   : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                }`}
+              }`}
               title="Vista en tabla"
             >
               <ListBulletIcon className="h-5 w-5" />
@@ -165,6 +190,19 @@ const Sales = () => {
       {/* Modales */}
       <PaymentModal />
       <QuantityModal />
+
+      <PrintTicketModal
+        show={showPrintTicketModal}
+        onClose={handleSkipTicket}
+        onPrintTicket={handlePrintTicket}
+        onSkip={handleSkipTicket}
+      />
+
+      <TicketPreviewModal
+        show={showTicketPreviewModal}
+        onClose={handleCloseTicketPreview}
+        saleData={lastCompletedSale}
+      />
     </div>
   )
 }
