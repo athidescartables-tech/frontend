@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useConfigStore } from "../../store/configStore"
+import { useConfigStore } from "../../stores/configStore"
 import { useToast } from "../../contexts/ToastContext"
 import Card from "../common/Card"
 import Button from "../common/Button"
