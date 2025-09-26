@@ -47,13 +47,28 @@ const Dashboard = () => {
     )
   }
 
-  const quickLinks = [
-    { name: "Hacer una Venta", icon: ShoppingCartIcon, path: "/ventas", color: "text-blue-600" },
-    { name: "Ir a Caja", icon: WalletIcon, path: "/caja", color: "text-green-600" },
-    { name: "Ir a Stock", icon: CubeIcon, path: "/stock", color: "text-purple-600" },
-    { name: "Ir a Clientes", icon: UsersIcon, path: "/clientes", color: "text-orange-600" },
-    { name: "Ir a Reportes", icon: ChartBarIcon, path: "/reportes", color: "text-red-600" },
+  const allQuickLinks = [
+    {
+      name: "Hacer una Venta",
+      icon: ShoppingCartIcon,
+      path: "/ventas",
+      color: "text-blue-600",
+      roles: ["admin", "empleado"],
+    },
+    { name: "Ir a Caja", icon: WalletIcon, path: "/caja", color: "text-green-600", roles: ["admin", "empleado"] },
+    {
+      name: "Ir a Clientes",
+      icon: UsersIcon,
+      path: "/clientes",
+      color: "text-orange-600",
+      roles: ["admin", "empleado"],
+    },
+    { name: "Ir a Stock", icon: CubeIcon, path: "/stock", color: "text-purple-600", roles: ["admin"] },
+    { name: "Ir a Reportes", icon: ChartBarIcon, path: "/reportes", color: "text-red-600", roles: ["admin"] },
   ]
+
+  // Filtrar enlaces según el rol del usuario
+  const quickLinks = allQuickLinks.filter((link) => user?.role && link.roles.includes(user.role))
 
   return (
     <div className="space-y-6">
@@ -69,6 +84,15 @@ const Dashboard = () => {
             day: "numeric",
           })}
         </p>
+        <div className="mt-2">
+          <span
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              user?.role === "admin" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"
+            }`}
+          >
+            {user?.role === "admin" ? "Administrador" : "Empleado"}
+          </span>
+        </div>
       </div>
 
       {/* Estado de caja */}
@@ -112,7 +136,12 @@ const Dashboard = () => {
 
       {/* Enlaces Rápidos */}
       <div className="mt-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Accesos Rápidos</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">
+          Accesos Rápidos
+          {user?.role === "empleado" && (
+            <span className="ml-2 text-sm font-normal text-gray-500">(Acceso limitado)</span>
+          )}
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {quickLinks.map((link) => (
             <Link key={link.name} to={link.path} className="block">
@@ -125,6 +154,23 @@ const Dashboard = () => {
             </Link>
           ))}
         </div>
+
+        {user?.role === "empleado" && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <UsersIcon className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">Acceso de Empleado</h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  Como empleado, tienes acceso a las funciones principales de ventas, caja y gestión de clientes. Para
+                  acceder a otras funciones como stock, reportes o configuración, contacta a un administrador.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

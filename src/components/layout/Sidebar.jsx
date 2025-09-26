@@ -7,7 +7,6 @@ import {
   XMarkIcon,
   HomeIcon,
   ShoppingCartIcon,
-  ShoppingBagIcon,
   CurrencyDollarIcon,
   CubeIcon,
   ChartBarIcon,
@@ -15,33 +14,39 @@ import {
   UsersIcon,
   BuildingStorefrontIcon,
   TagIcon,
-  DocumentTextIcon,
+  ShoppingBagIcon,
 } from "@heroicons/react/24/outline"
 import clsx from "clsx"
 import { useAuth } from "@/contexts/AuthContext"
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: HomeIcon },
-  { name: "Ventas", href: "/ventas", icon: ShoppingCartIcon },
-  { name: "Caja", href: "/caja", icon: CurrencyDollarIcon },
-  { name: "Stock", href: "/stock", icon: CubeIcon },
-  { name: "Clientes", href: "/clientes", icon: UsersIcon },
-  { name: "Categorías", href: "/categorias", icon: TagIcon },
+  // Rutas para todos los usuarios autenticados
+  { name: "Dashboard", href: "/", icon: HomeIcon, roles: ["admin", "empleado"] },
+
+  // Rutas permitidas para empleados
+  { name: "Ventas", href: "/ventas", icon: ShoppingCartIcon, roles: ["admin", "empleado"] },
+  { name: "Caja", href: "/caja", icon: CurrencyDollarIcon, roles: ["admin", "empleado"] },
+  { name: "Clientes", href: "/clientes", icon: UsersIcon, roles: ["admin", "empleado"] },
+
   // Rutas solo para admin
-  { name: "Reportes", href: "/reportes", icon: ChartBarIcon, adminOnly: true },
-  { name: "Configuración", href: "/configuracion", icon: Cog6ToothIcon, adminOnly: true },
+  { name: "Stock", href: "/stock", icon: CubeIcon, roles: ["admin"] },
+  { name: "Compras", href: "/compras", icon: ShoppingBagIcon, roles: ["admin"] },
+  { name: "Proveedores", href: "/proveedores", icon: BuildingStorefrontIcon, roles: ["admin"] },
+  { name: "Categorías", href: "/categorias", icon: TagIcon, roles: ["admin"] },
+  { name: "Reportes", href: "/reportes", icon: ChartBarIcon, roles: ["admin"] },
+  { name: "Configuración", href: "/configuracion", icon: Cog6ToothIcon, roles: ["admin"] },
 ]
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen, isMobile }) => {
   const location = useLocation()
   const { user } = useAuth()
 
-  // Filtrar navegación según el rol del usuario
   const filteredNavigation = navigation.filter((item) => {
-    if (item.adminOnly && user?.role !== "admin") {
-      return false
-    }
-    return true
+    // Si no hay usuario, no mostrar nada
+    if (!user?.role) return false
+
+    // Verificar si el rol del usuario está en los roles permitidos para este item
+    return item.roles.includes(user.role)
   })
 
   const SidebarContent = () => (
@@ -81,9 +86,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, isMobile }) => {
                   >
                     <item.icon
                       className={clsx(
-                        location.pathname === item.href
-                          ? "text-blue-600"
-                          : "text-gray-500 group-hover:text-blue-600",
+                        location.pathname === item.href ? "text-blue-600" : "text-gray-500 group-hover:text-blue-600",
                         "h-5 w-5 shrink-0 transition-colors",
                       )}
                       aria-hidden="true"
@@ -94,23 +97,36 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, isMobile }) => {
               ))}
             </ul>
           </li>
-          
-          {/* Información del usuario en la parte inferior */}
+
           <li className="mt-auto">
-            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <div
+              className={clsx(
+                "rounded-lg p-3 border",
+                user?.role === "admin" ? "bg-blue-50 border-blue-200" : "bg-gray-50 border-gray-200",
+              )}
+            >
               <div className="flex items-center space-x-3">
-                <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-gray-700">
-                    {user?.name?.charAt(0)?.toUpperCase() || "U"}
-                  </span>
+                <div
+                  className={clsx(
+                    "h-8 w-8 rounded-full flex items-center justify-center",
+                    user?.role === "admin" ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-700",
+                  )}
+                >
+                  <span className="text-sm font-semibold">{user?.name?.charAt(0)?.toUpperCase() || "U"}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {user?.name || "Usuario"}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="text-sm font-medium text-gray-900 truncate">{user?.name || "Usuario"}</p>
+                  <p className={clsx("text-xs truncate", user?.role === "admin" ? "text-blue-600" : "text-gray-500")}>
                     {user?.role === "admin" ? "Administrador" : "Empleado"}
                   </p>
+                </div>
+                <div
+                  className={clsx(
+                    "px-2 py-1 rounded-full text-xs font-medium",
+                    user?.role === "admin" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800",
+                  )}
+                >
+                  {user?.role === "admin" ? "Admin" : "Empleado"}
                 </div>
               </div>
             </div>
@@ -157,9 +173,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, isMobile }) => {
                   leaveTo="opacity-0"
                 >
                   <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
-                    <button 
-                      type="button" 
-                      className="-m-2.5 p-2.5 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors" 
+                    <button
+                      type="button"
+                      className="-m-2.5 p-2.5 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
                       onClick={() => setSidebarOpen(false)}
                     >
                       <span className="sr-only">Cerrar sidebar</span>

@@ -4,8 +4,9 @@ import { useEffect } from "react"
 import { Navigate, useLocation } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import { useToast } from "@/contexts/ToastContext"
+import AccessDenied from "@/components/common/AccessDenied"
 
-const ProtectedRoute = ({ children, requiredRole = null }) => {
+const ProtectedRoute = ({ children, requiredRole = null, showAccessDenied = false }) => {
   const { isAuthenticated, user, initialized } = useAuth()
   const { error } = useToast()
   const location = useLocation()
@@ -17,12 +18,14 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
 
       // Si es empleado y trata de acceder a rutas de admin
       if (requiredRole === "admin" && userRole !== "admin") {
-        error("No tienes permisos para acceder a esta sección", {
-          title: "Acceso denegado",
-        })
+        if (!showAccessDenied) {
+          error("No tienes permisos para acceder a esta sección", {
+            title: "Acceso denegado",
+          })
+        }
       }
     }
-  }, [isAuthenticated, user, requiredRole, error])
+  }, [isAuthenticated, user, requiredRole, error, showAccessDenied])
 
   // Mostrar loading mientras se inicializa la autenticación
   if (!initialized) {
@@ -43,8 +46,13 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
 
   // Verificar permisos de rol
   if (requiredRole && user?.role !== requiredRole) {
-    // Si es empleado tratando de acceder a rutas de admin, redirigir al dashboard
+    // Si es empleado tratando de acceder a rutas de admin
     if (requiredRole === "admin" && user?.role === "empleado") {
+      if (showAccessDenied) {
+        return (
+          <AccessDenied title="Acceso Restringido" message="Esta sección está disponible solo para administradores." />
+        )
+      }
       return <Navigate to="/" replace />
     }
   }

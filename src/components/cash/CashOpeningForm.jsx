@@ -145,26 +145,6 @@ const CashOpeningForm = ({ isOpen, onClose }) => {
                           )}
                         </div>
 
-                        {/* Información recomendada */}
-                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
-                          <div className="flex items-start">
-                            <InformationCircleIcon className="h-5 w-5 text-green-600 mr-3 mt-0.5" />
-                            <div className="text-sm text-green-800">
-                              <p className="font-medium mb-1">Monto recomendado:</p>
-                              <div className="grid grid-cols-2 gap-2">
-                                <div className="text-center p-2 bg-white rounded-lg border border-green-200">
-                                  <p className="text-xs text-green-600">Mínimo</p>
-                                  <p className="font-bold text-green-900">{formatCurrency(settings.minCashAmount)}</p>
-                                </div>
-                                <div className="text-center p-2 bg-white rounded-lg border border-green-200">
-                                  <p className="text-xs text-green-600">Máximo</p>
-                                  <p className="font-bold text-green-900">{formatCurrency(settings.maxCashAmount)}</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
                         {/* Notas */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
