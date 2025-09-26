@@ -5,18 +5,13 @@ import { useAuth } from "@/contexts/AuthContext"
 import Card from "@/components/common/Card"
 import LoadingButton from "../components/common/LoandingButton"
 import { useToast } from "@/contexts/ToastContext"
-import {
-  UserCircleIcon,
-  KeyIcon,
-  Cog6ToothIcon,
-  EyeIcon,
-  EyeSlashIcon,
-} from "@heroicons/react/24/outline"
+import { UserCircleIcon, KeyIcon, UsersIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline"
+import UserManagement from "@/components/config/UserManagement"
 
 const Configuration = () => {
   const { user, changePassword, loading } = useAuth()
   const toast = useToast()
-  
+
   const [activeTab, setActiveTab] = useState("profile")
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -54,16 +49,16 @@ const Configuration = () => {
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target
-    setPasswordData(prev => ({
+    setPasswordData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }))
 
     // Limpiar errores del campo específico
     if (passwordErrors[name]) {
-      setPasswordErrors(prev => ({
+      setPasswordErrors((prev) => ({
         ...prev,
-        [name]: ""
+        [name]: "",
       }))
     }
   }
@@ -118,16 +113,16 @@ const Configuration = () => {
   }
 
   const togglePasswordVisibility = (field) => {
-    setShowPasswords(prev => ({
+    setShowPasswords((prev) => ({
       ...prev,
-      [field]: !prev[field]
+      [field]: !prev[field],
     }))
   }
 
   const tabs = [
     { id: "profile", name: "Mi Perfil", icon: UserCircleIcon },
     { id: "password", name: "Cambiar Contraseña", icon: KeyIcon },
-    { id: "settings", name: "Configuración", icon: Cog6ToothIcon },
+    { id: "users", name: "Usuarios", icon: UsersIcon },
   ]
 
   return (
@@ -175,7 +170,9 @@ const Configuration = () => {
                   <div>
                     <h4 className="text-lg font-medium text-gray-900">{user?.name || "Usuario"}</h4>
                     <p className="text-sm text-gray-500">{user?.email || "email@ejemplo.com"}</p>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-2 ${getRoleBadgeColor(user?.role)}`}>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-2 ${getRoleBadgeColor(user?.role)}`}
+                    >
                       {getRoleDisplay(user?.role)}
                     </span>
                   </div>
@@ -339,21 +336,7 @@ const Configuration = () => {
           </Card>
         )}
 
-        {activeTab === "settings" && (
-          <Card>
-            <Card.Header>
-              <h3 className="text-lg font-medium text-gray-900">Configuración General</h3>
-              <p className="text-sm text-gray-500">Configuración adicional del sistema</p>
-            </Card.Header>
-            <Card.Body>
-              <div className="text-center py-8 text-gray-500">
-                <Cog6ToothIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2">Configuración adicional</p>
-                <p className="text-sm">Las opciones de configuración aparecerán aquí próximamente</p>
-              </div>
-            </Card.Body>
-          </Card>
-        )}
+        {activeTab === "users" && <UserManagement />}
       </div>
     </div>
   )

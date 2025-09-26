@@ -5,18 +5,15 @@ import { ThemeProvider, createTheme } from "@mui/material/styles"
 import CssBaseline from "@mui/material/CssBaseline"
 import Layout from "@/components/layout/Layout"
 import Login from "@/pages/Login"
-import Register from "@/pages/Register"
 import Dashboard from "@/pages/Dashboard"
 import Sales from "@/pages/Sales"
-import Purchases from "@/pages/Purchases"
 import Stock from "@/pages/Stock"
 import Categories from "@/pages/Categories"
 import Cash from "@/pages/Cash"
 import Customers from "@/pages/Customers"
-import Suppliers from "@/pages/Suppliers"
 import Reports from "@/pages/Reports"
 import Configuration from "@/pages/Configuration"
-import ProtectedRoute from "@/lib/ProtectedRoute"
+import ProtectedRoute from "@/components/ProtectedRoute"
 import { ToastProvider } from "@/contexts/ToastContext"
 import { AuthProvider, useAuth } from "@/contexts/AuthContext"
 
@@ -105,7 +102,6 @@ const AppRoutes = () => {
     <Routes>
       {/* Rutas públicas */}
       <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
-      <Route path="/register" element={isAuthenticated ? <Navigate to="/" replace /> : <Register />} />
 
       {/* Rutas protegidas */}
       <Route
@@ -118,13 +114,27 @@ const AppRoutes = () => {
       >
         {/* Rutas anidadas dentro del layout */}
         <Route index element={<Dashboard />} />
+
         <Route path="ventas" element={<Sales />} />
-        <Route path="stock" element={<Stock />} />
-        <Route path="categorias" element={<Categories />} />
         <Route path="caja" element={<Cash />} />
         <Route path="clientes" element={<Customers />} />
 
-        {/* Rutas que requieren permisos de administrador */}
+        <Route
+          path="stock"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <Stock />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="categorias"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <Categories />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="reportes"
           element={
