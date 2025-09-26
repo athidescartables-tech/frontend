@@ -13,7 +13,7 @@ import Cash from "@/pages/Cash"
 import Customers from "@/pages/Customers"
 import Reports from "@/pages/Reports"
 import Configuration from "@/pages/Configuration"
-import ProtectedRoute from "@/components/ProtectedRoute"
+import ProtectedRoute from "@/lib/ProtectedRoute"
 import { ToastProvider } from "@/contexts/ToastContext"
 import { AuthProvider, useAuth } from "@/contexts/AuthContext"
 
