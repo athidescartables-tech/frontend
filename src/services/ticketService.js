@@ -1,4 +1,4 @@
-import { useConfigStore } from "../store/configStore"
+import { useConfigStore } from "../stores/configStore"
 import { formatCurrency } from "../lib/formatters"
 
 export const ticketService = {
