@@ -204,7 +204,9 @@ const UserManagement = () => {
       const result = await userService.toggleUserStatus(userId, !currentStatus)
       if (result.success) {
         toast.success("Estado actualizado", result.message || "El estado del usuario se ha actualizado")
-        loadUsers() // Recargar la lista
+        setUsers((prevUsers) =>
+          prevUsers.map((user) => (user.id === userId ? { ...user, active: !currentStatus } : user)),
+        )
       } else {
         toast.error("Error actualizando estado", result.error)
       }
