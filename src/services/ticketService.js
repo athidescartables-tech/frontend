@@ -27,7 +27,7 @@ export const ticketService = {
         }),
         cashier: saleData.cashier_name || "Sistema",
         customer: saleData.customer_name || "Consumidor Final",
-        paymentMethod: this.getPaymentMethodName(saleData.payment_method),
+        paymentMethod: ticketService.getPaymentMethodName(saleData.payment_method),
         paymentMethods: saleData.payment_methods || [],
       },
 
@@ -68,11 +68,10 @@ export const ticketService = {
     return methods[method] || method
   },
 
-  // Imprimir ticket térmico
   printThermalTicket: async (ticketData) => {
     try {
       // Crear contenido del ticket para impresión térmica
-      const ticketContent = this.generateThermalTicketContent(ticketData)
+      const ticketContent = ticketService.generateThermalTicketContent(ticketData)
 
       // Crear ventana de impresión
       const printWindow = window.open("", "_blank", "width=300,height=600")
@@ -256,7 +255,7 @@ export const ticketService = {
           <div class="item">
             <div class="item-name">${item.name}</div>
             <div class="item-details">
-              <span>${item.quantity} ${this.getUnitLabel(item.unitType)} x ${formatCurrency(item.unitPrice)}</span>
+              <span>${item.quantity} ${ticketService.getUnitLabel(item.unitType)} x ${formatCurrency(item.unitPrice)}</span>
               <span>${formatCurrency(item.total)}</span>
             </div>
           </div>

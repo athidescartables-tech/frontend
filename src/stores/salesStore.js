@@ -493,6 +493,8 @@ export const useSalesStore = create((set, get) => ({
 
         console.log("🎉 === VENTA PROCESADA EXITOSAMENTE ===")
 
+        console.log("[v0] Sale completed, preparing ticket modal:", sale)
+
         set({ showPrintTicketModal: true })
 
         return { success: true, sale }
