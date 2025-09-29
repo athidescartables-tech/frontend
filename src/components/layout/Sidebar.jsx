@@ -30,8 +30,6 @@ const navigation = [
 
   // Rutas solo para admin
   { name: "Stock", href: "/stock", icon: CubeIcon, roles: ["admin"] },
-  { name: "Compras", href: "/compras", icon: ShoppingBagIcon, roles: ["admin"] },
-  { name: "Proveedores", href: "/proveedores", icon: BuildingStorefrontIcon, roles: ["admin"] },
   { name: "Categorías", href: "/categorias", icon: TagIcon, roles: ["admin"] },
   { name: "Reportes", href: "/reportes", icon: ChartBarIcon, roles: ["admin"] },
   { name: "Configuración", href: "/configuracion", icon: Cog6ToothIcon, roles: ["admin"] },
