@@ -50,4 +50,18 @@ export const productsService = {
   async getStockStats() {
     return api.get("/products/stats")
   },
+
+  async importProductsFromExcel(formData) {
+    return api.post("/products/import/excel", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    })
+  },
+
+  async downloadExcelTemplate() {
+    return api.get("/products/import/template", {
+      responseType: "blob",
+    })
+  },
 }

@@ -13,6 +13,7 @@ import StockMovementForm from "../components/stock/StockMovementForm"
 import StockAlerts from "../components/stock/StockAlerts"
 import StockMovementsList from "../components/stock/StockMovementsList"
 import ProductSearchStock from "../components/stock/ProductSearchStock"
+import ImportProductsModal from "../components/stock/ImportProductsModal"
 import {
   PlusIcon,
   CubeIcon,
@@ -23,6 +24,7 @@ import {
   ArrowsRightLeftIcon,
   ScaleIcon,
   PhotoIcon,
+  ArrowUpTrayIcon,
 } from "@heroicons/react/24/outline"
 
 const Stock = () => {
@@ -39,6 +41,7 @@ const Stock = () => {
   const [activeTab, setActiveTab] = useState("products")
   const [showProductForm, setShowProductForm] = useState(false)
   const [showMovementForm, setShowMovementForm] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [selectedProductForMovement, setSelectedProductForMovement] = useState(null)
   const [searchQuery, setSearchQuery] = useState("")
@@ -50,7 +53,6 @@ const Stock = () => {
     limit: 25,
   })
 
-  // Cargar datos iniciales
   const loadInitialData = useCallback(async () => {
     try {
       await fetchCategories({ active: "true" })
@@ -67,7 +69,6 @@ const Stock = () => {
     loadInitialData()
   }, [loadInitialData])
 
-  // Efecto para cargar productos cuando cambien los filtros
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       const params = {
@@ -76,7 +77,6 @@ const Stock = () => {
         active: "all",
       }
 
-      // Aplicar filtros de búsqueda
       if (searchQuery.trim()) {
         params.search = searchQuery.trim()
       }
@@ -102,17 +102,15 @@ const Stock = () => {
       }
 
       fetchProducts(params)
-    }, 300) // Debounce de 300ms
+    }, 300)
 
     return () => clearTimeout(timeoutId)
   }, [searchQuery, filters, fetchProducts])
 
-  // Función para manejar cambio de página
   const handlePageChange = useCallback((newPage) => {
     setFilters((prev) => ({ ...prev, page: newPage }))
   }, [])
 
-  // Función para manejar cambio de elementos por página
   const handleItemsPerPageChange = useCallback((newLimit, newPage = 1) => {
     setFilters((prev) => ({
       ...prev,
@@ -121,22 +119,19 @@ const Stock = () => {
     }))
   }, [])
 
-  // Función para manejar cambios en filtros
   const handleFiltersChange = useCallback((newFilters) => {
     setFilters((prev) => ({
       ...prev,
       ...newFilters,
-      page: 1, // Resetear a la primera página cuando cambien los filtros
+      page: 1,
     }))
   }, [])
 
-  // Función para manejar búsqueda
   const handleSearchChange = useCallback((query) => {
     setSearchQuery(query)
-    setFilters((prev) => ({ ...prev, page: 1 })) // Resetear página en búsqueda
+    setFilters((prev) => ({ ...prev, page: 1 }))
   }, [])
 
-  // Tabs con indicador de alertas
   const tabs = [
     { id: "products", name: "Productos", icon: CubeIcon },
     { id: "movements", name: "Movimientos", icon: ArrowTrendingUpIcon },
@@ -172,24 +167,20 @@ const Stock = () => {
     [categories],
   )
 
-  // Mejorar función de eliminación con mejor feedback
   const handleDeleteProduct = useCallback(
     async (product) => {
-      // Mensaje de confirmación más específico
       const confirmMessage = `¿Estás seguro de que deseas eliminar el producto "${product.name}"?\n\nEsta acción no se puede deshacer.`
 
       if (window.confirm(confirmMessage)) {
         try {
           const result = await deleteProduct(product.id)
 
-          // Mostrar mensaje específico según la acción realizada
           if (result.action === "deleted") {
             alert(`Producto "${product.name}" eliminado completamente de la base de datos.`)
           } else {
             alert(`Producto "${product.name}" desactivado (tiene ventas asociadas).`)
           }
 
-          // Recargar la página actual después de eliminar
           const params = {
             page: filters.page,
             limit: filters.limit,
@@ -215,7 +206,6 @@ const Stock = () => {
   const handleCloseMovementForm = useCallback(() => {
     setShowMovementForm(false)
     setSelectedProductForMovement(null)
-    // Recargar productos después de movimiento
     const params = {
       page: filters.page,
       limit: filters.limit,
@@ -237,7 +227,22 @@ const Stock = () => {
   }, [])
 
   const handleSaveProduct = useCallback(() => {
-    // Recargar productos después de guardar
+    const params = {
+      page: filters.page,
+      limit: filters.limit,
+      active: "all",
+    }
+    if (searchQuery.trim()) params.search = searchQuery.trim()
+    if (filters.category) params.category = filters.category
+    fetchProducts(params, true)
+  }, [filters, searchQuery, fetchProducts])
+
+  const handleOpenImportModal = useCallback(() => {
+    setShowImportModal(true)
+  }, [])
+
+  const handleCloseImportModal = useCallback(() => {
+    setShowImportModal(false)
     const params = {
       page: filters.page,
       limit: filters.limit,
@@ -258,13 +263,16 @@ const Stock = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Gestión de Stock</h1>
           <p className="mt-1 text-sm text-gray-500">Administra tu inventario y controla los movimientos de stock</p>
         </div>
         <div className="flex space-x-3">
+          <Button onClick={handleOpenImportModal} variant="outline">
+            <ArrowUpTrayIcon className="h-4 w-4 mr-2" />
+            Importar Excel
+          </Button>
           <Button onClick={() => handleOpenProductForm()}>
             <PlusIcon className="h-4 w-4 mr-2" />
             Nuevo Producto
@@ -272,7 +280,6 @@ const Stock = () => {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           {tabs.map((tab) => (
@@ -282,23 +289,20 @@ const Stock = () => {
               className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm relative transition-colors duration-200 ease-in-out ${
                 activeTab === tab.id
                   ? "border-primary-500 text-primary-600"
-                  : tab.hasAlerts // APLICADO: Estilo de alerta a la pestaña
+                  : tab.hasAlerts
                     ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
               <tab.icon className="h-5 w-5 mr-2" />
               {tab.name}
-              {/* ELIMINADO: El punto amarillo, ahora la pestaña completa cambia de color */}
             </button>
           ))}
         </nav>
       </div>
 
-      {/* Contenido de tabs */}
       {activeTab === "products" && (
         <div className="space-y-6">
-          {/* Búsqueda avanzada */}
           <ProductSearchStock
             onSearch={handleSearchChange}
             onFiltersChange={handleFiltersChange}
@@ -306,7 +310,6 @@ const Stock = () => {
             filters={filters}
           />
 
-          {/* Tabla de productos */}
           <Card>
             <div className="px-4 py-3 border-b border-gray-200">
               <div className="flex items-center justify-between">
@@ -496,7 +499,6 @@ const Stock = () => {
               </table>
             </div>
 
-            {/* Paginación */}
             {productsPagination.pages > 1 && (
               <Pagination
                 currentPage={productsPagination.page}
@@ -516,7 +518,6 @@ const Stock = () => {
 
       {activeTab === "alerts" && <StockAlerts />}
 
-      {/* Modales */}
       <ProductForm
         isOpen={showProductForm}
         product={selectedProduct}
@@ -531,7 +532,8 @@ const Stock = () => {
         onSave={() => {}}
       />
 
-      {/* Estilos */}
+      <ImportProductsModal isOpen={showImportModal} onClose={handleCloseImportModal} />
+
       <style jsx>{`
         .line-clamp-2 {
           display: -webkit-box;
