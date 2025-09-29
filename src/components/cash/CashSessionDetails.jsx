@@ -367,11 +367,12 @@ const CashSessionDetails = ({ isOpen, session, onClose }) => {
                             <div>
                               <p className="text-sm text-gray-600">Duración</p>
                               <p className="text-xl font-bold text-gray-700">
-                                {Math.round(
-                                  (new Date(session.closing_date) - new Date(session.opening_date)) /
-                                    (1000 * 60 * 60 * 10),
-                                ) / 10}
-                                h
+                                {(() => {
+                                  const durationInHours =
+                                    (new Date(session.closing_date) - new Date(session.opening_date)) / (1000 * 60 * 60)
+                                  const rounded = Math.round(durationInHours * 10) / 10
+                                  return durationInHours >= 1 ? `${rounded}h` : `${Math.round(durationInHours * 60)}min`
+                                })()}
                               </p>
                             </div>
                           </div>

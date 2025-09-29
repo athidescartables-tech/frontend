@@ -235,7 +235,8 @@ const CashHistory = () => {
                   {cashHistory.map((session) => {
                     const openingDate = new Date(session.opening_date)
                     const closingDate = new Date(session.closing_date)
-                    const duration = Math.round((closingDate - openingDate) / (1000 * 60 * 60 * 100)) / 100 // en horas
+                    const durationInHours = (closingDate - openingDate) / (1000 * 60 * 60)
+                    const duration = Math.round(durationInHours * 100) / 100 // Round to 2 decimal places
 
                     return (
                       <tr key={session.id} className="hover:bg-gray-50">
@@ -248,7 +249,9 @@ const CashHistory = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{duration.toFixed(1)}h</div>
+                          <div className="text-sm text-gray-900">
+                            {duration >= 1 ? `${duration.toFixed(1)}h` : `${Math.round(durationInHours * 60)}min`}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
