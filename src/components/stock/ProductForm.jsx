@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, Transition } from "@headlessui/react"
 import { Fragment } from "react"
 import { NumericFormat } from "react-number-format"
@@ -20,10 +20,11 @@ import {
   CheckCircleIcon,
   PlusIcon,
   PencilIcon,
-  SwatchIcon,
   ScaleIcon,
   ArrowRightIcon,
   ArrowLeftIcon,
+  MagnifyingGlassIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline"
 
 const ProductForm = ({ isOpen, product, onClose, onSave }) => {
@@ -52,6 +53,11 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
   const [activeSection, setActiveSection] = useState("basic")
   const [completedSections, setCompletedSections] = useState(new Set())
 
+  const [categorySearchQuery, setCategorySearchQuery] = useState("")
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
+  const [filteredCategories, setFilteredCategories] = useState([])
+  const categorySearchRef = useRef(null)
+
   // Secciones del formulario
   const sections = [
     { id: "basic", name: "Básico", icon: TagIcon },
@@ -66,6 +72,29 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
       fetchCategories({ active: "true" })
     }
   }, [isOpen, fetchCategories])
+
+  useEffect(() => {
+    if (categorySearchQuery.trim() === "") {
+      setFilteredCategories(categories)
+    } else {
+      const query = categorySearchQuery.toLowerCase()
+      const filtered = categories.filter((cat) => cat.name.toLowerCase().includes(query))
+      setFilteredCategories(filtered)
+    }
+  }, [categorySearchQuery, categories])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (categorySearchRef.current && !categorySearchRef.current.contains(event.target)) {
+        setShowCategoryDropdown(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
 
   // Cargar datos del producto si estamos editando
   useEffect(() => {
@@ -92,7 +121,6 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
         price_level_2: product.price_level_2?.toString() || "",
         price_level_3: product.price_level_3?.toString() || "",
         cost: product.cost?.toString() || "",
-        // Aplicando formateo correcto para stock y min_stock
         stock: formatStockValue(product.stock, product.unit_type || "unidades"),
         min_stock: formatStockValue(product.min_stock, product.unit_type || "unidades"),
         category_id: product.category_id?.toString() || "",
@@ -101,7 +129,14 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
         unit_type: product.unit_type || "unidades",
         active: product.active !== undefined ? product.active : true,
       })
-      // Para edición, marcar todas las secciones como completadas
+
+      if (product.category_id) {
+        const selectedCat = categories.find((cat) => cat.id === product.category_id)
+        if (selectedCat) {
+          setCategorySearchQuery(selectedCat.name)
+        }
+      }
+
       setCompletedSections(new Set(["basic", "pricing", "inventory", "media"]))
     } else {
       // Reset form for new product
@@ -121,11 +156,12 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
         unit_type: "unidades",
         active: true,
       })
+      setCategorySearchQuery("")
       setCompletedSections(new Set())
     }
     setErrors({})
     setActiveSection("basic")
-  }, [product, isOpen])
+  }, [product, isOpen, categories])
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -160,6 +196,38 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
         [name]: "",
       }))
     }
+  }
+
+  const handleCategorySearchChange = (e) => {
+    const value = e.target.value
+    setCategorySearchQuery(value)
+    setShowCategoryDropdown(true)
+
+    // Si se borra el texto, limpiar la categoría seleccionada
+    if (value.trim() === "") {
+      setFormData((prev) => ({
+        ...prev,
+        category_id: "",
+      }))
+    }
+  }
+
+  const handleSelectCategory = (category) => {
+    setFormData((prev) => ({
+      ...prev,
+      category_id: category.id.toString(),
+    }))
+    setCategorySearchQuery(category.name)
+    setShowCategoryDropdown(false)
+  }
+
+  const handleClearCategory = () => {
+    setFormData((prev) => ({
+      ...prev,
+      category_id: "",
+    }))
+    setCategorySearchQuery("")
+    setShowCategoryDropdown(false)
   }
 
   // Manejar cambios en campos numéricos con validación por unidad
@@ -646,37 +714,86 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
                                   </div>
 
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Categoría */}
-                                    <div>
+                                    <div ref={categorySearchRef}>
                                       <label
-                                        htmlFor="category_id"
+                                        htmlFor="category_search"
                                         className="block text-sm font-medium text-gray-700 mb-2"
                                       >
                                         Categoría
                                       </label>
                                       <div className="relative">
-                                        <select
-                                          name="category_id"
-                                          id="category_id"
-                                          value={formData.category_id}
-                                          onChange={handleChange}
-                                          className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:border-gray-400 transition-all bg-white appearance-none"
-                                        >
-                                          <option value="">Sin categoría</option>
-                                          {categories.map((category) => (
-                                            <option key={category.id} value={category.id}>
-                                              {category.name}
-                                            </option>
-                                          ))}
-                                        </select>
-                                        <SwatchIcon className="h-5 w-5 text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                                        <div className="relative">
+                                          <input
+                                            type="text"
+                                            id="category_search"
+                                            value={categorySearchQuery}
+                                            onChange={handleCategorySearchChange}
+                                            onFocus={() => setShowCategoryDropdown(true)}
+                                            className="block w-full px-4 py-3 pr-20 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:border-gray-400 transition-all bg-white"
+                                            placeholder="Buscar categoría..."
+                                          />
+                                          <div className="absolute inset-y-0 right-0 flex items-center pr-3 space-x-1">
+                                            {formData.category_id && (
+                                              <button
+                                                type="button"
+                                                onClick={handleClearCategory}
+                                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                                title="Limpiar categoría"
+                                              >
+                                                <XCircleIcon className="h-5 w-5" />
+                                              </button>
+                                            )}
+                                            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                                          </div>
+                                        </div>
+
+                                        {/* Dropdown de resultados */}
+                                        {showCategoryDropdown && (
+                                          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                                            {filteredCategories.length > 0 ? (
+                                              <ul className="py-1">
+                                                {filteredCategories.map((category) => (
+                                                  <li key={category.id}>
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => handleSelectCategory(category)}
+                                                      className={`w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors flex items-center justify-between ${
+                                                        formData.category_id === category.id.toString()
+                                                          ? "bg-blue-100 text-blue-700"
+                                                          : "text-gray-900"
+                                                      }`}
+                                                    >
+                                                      <span className="flex items-center">
+                                                        {category.icon && (
+                                                          <span className="mr-2 text-lg">{category.icon}</span>
+                                                        )}
+                                                        {category.name}
+                                                      </span>
+                                                      {formData.category_id === category.id.toString() && (
+                                                        <CheckCircleIcon className="h-5 w-5 text-blue-600" />
+                                                      )}
+                                                    </button>
+                                                  </li>
+                                                ))}
+                                              </ul>
+                                            ) : (
+                                              <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                                                {categorySearchQuery.trim()
+                                                  ? "No se encontraron categorías"
+                                                  : "No hay categorías disponibles"}
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
                                       </div>
+                                      <p className="mt-2 text-xs text-gray-500">
+                                        Escribe para buscar entre las categorías disponibles
+                                      </p>
                                     </div>
 
-                                    {/* Código de barras */}
                                     <div>
                                       <label htmlFor="barcode" className="block text-sm font-medium text-gray-700 mb-2">
-                                        Código de barras
+                                        Código de barras (opcional)
                                       </label>
                                       <input
                                         type="text"
@@ -687,6 +804,9 @@ const ProductForm = ({ isOpen, product, onClose, onSave }) => {
                                         className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:border-gray-400 transition-all bg-white"
                                         placeholder="Código de barras (opcional)"
                                       />
+                                      <p className="mt-2 text-xs text-gray-500">
+                                        Puedes dejarlo vacío si no tienes código de barras
+                                      </p>
                                     </div>
                                   </div>
 
