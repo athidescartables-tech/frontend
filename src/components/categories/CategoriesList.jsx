@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useCategoryStore } from "../../stores/categoryStore"
 import { useToast } from "../../hooks/useToast"
 import Card from "../common/Card"
-import Button from "../common/Button"
 import { PencilIcon, TrashIcon, EyeIcon, ArrowPathIcon, TagIcon } from "@heroicons/react/24/outline"
 
 const CategoriesList = ({ onEdit, onView, searchQuery, showInactive = false }) => {
@@ -26,12 +25,19 @@ const CategoriesList = ({ onEdit, onView, searchQuery, showInactive = false }) =
   })
 
   const handleDelete = async (category) => {
-    if (window.confirm(`¿Estás seguro de que deseas eliminar la categoría "${category.name}"?`)) {
+    const confirmMessage = `¿Estás seguro de que deseas eliminar la categoría "${category.name}"?\n\nNota: Si tiene productos asociados, solo se marcará como inactiva. Si no tiene productos, se eliminará permanentemente.`
+
+    if (window.confirm(confirmMessage)) {
       setDeletingId(category.id)
 
       try {
-        await deleteCategory(category.id)
-        showToast("Categoría eliminada correctamente", "success")
+        const result = await deleteCategory(category.id)
+
+        if (result.deleted) {
+          showToast("Categoría eliminada permanentemente", "success")
+        } else {
+          showToast(result.message || "Categoría marcada como inactiva", "success")
+        }
       } catch (error) {
         console.error("Error deleting category:", error)
         showToast(error.message || "Error al eliminar la categoría", "error")

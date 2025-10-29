@@ -138,15 +138,25 @@ export const useCategoryStore = create((set, get) => ({
   deleteCategory: async (id) => {
     set({ loading: true, error: null })
     try {
-      await categoriesService.deleteCategory(id)
+      const response = await categoriesService.deleteCategory(id)
 
-      // Marcar como inactiva en el estado local
-      set((state) => ({
-        categories: state.categories.map((category) =>
-          category.id === id ? { ...category, active: false } : category,
-        ),
-        loading: false,
-      }))
+      const wasDeleted = response.data.deleted
+
+      if (wasDeleted) {
+        set((state) => ({
+          categories: state.categories.filter((category) => category.id !== id),
+          loading: false,
+        }))
+      } else {
+        set((state) => ({
+          categories: state.categories.map((category) =>
+            category.id === id ? { ...category, active: false } : category,
+          ),
+          loading: false,
+        }))
+      }
+
+      return response.data
     } catch (error) {
       set({
         error: error.message || "Error al eliminar categoría",
