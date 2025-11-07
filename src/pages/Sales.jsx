@@ -18,6 +18,7 @@ import { Squares2X2Icon, ListBulletIcon, ArrowPathIcon } from "@heroicons/react/
 const Sales = () => {
   const [viewMode, setViewMode] = useState("list")
   const [searchTerm, setSearchTerm] = useState("")
+  const [saleType, setSaleType] = useState("venta") // Add sale type state
   const { fetchTopSellingProducts, topSellingProducts, loading } = useProductStore()
   const { fetchCategories } = useCategoryStore()
   const { initializeStore: initializeCustomerStore } = useCustomerStore()
@@ -148,6 +149,34 @@ const Sales = () => {
               <ListBulletIcon className="h-5 w-5" />
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+        <label className="block text-sm font-medium text-gray-700 mb-3">Tipo de Operación</label>
+        <div className="flex gap-4">
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="radio"
+              name="saleType"
+              value="venta"
+              checked={saleType === "venta"}
+              onChange={(e) => setSaleType(e.target.value)}
+              className="h-4 w-4 text-blue-600"
+            />
+            <span className="ml-2 text-sm text-gray-700">Venta (Local)</span>
+          </label>
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="radio"
+              name="saleType"
+              value="reparto"
+              checked={saleType === "reparto"}
+              onChange={(e) => setSaleType(e.target.value)}
+              className="h-4 w-4 text-blue-600"
+            />
+            <span className="ml-2 text-sm text-gray-700">Reparto (Repartidor)</span>
+          </label>
         </div>
       </div>
 

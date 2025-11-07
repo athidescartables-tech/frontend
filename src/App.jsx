@@ -7,6 +7,7 @@ import Layout from "@/components/layout/Layout"
 import Login from "@/pages/Login"
 import Dashboard from "@/pages/Dashboard"
 import Sales from "@/pages/Sales"
+import Deliveries from "./pages/Deliveries"
 import Stock from "@/pages/Stock"
 import Categories from "@/pages/Categories"
 import Cash from "@/pages/Cash"
@@ -116,6 +117,7 @@ const AppRoutes = () => {
         <Route index element={<Dashboard />} />
 
         <Route path="ventas" element={<Sales />} />
+         <Route path="repartos" element={<Deliveries />} />
         <Route path="caja" element={<Cash />} />
         <Route path="clientes" element={<Customers />} />
 

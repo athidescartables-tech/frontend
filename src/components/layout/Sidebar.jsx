@@ -15,6 +15,7 @@ import {
   BuildingStorefrontIcon,
   TagIcon,
   ShoppingBagIcon,
+  TruckIcon
 } from "@heroicons/react/24/outline"
 import clsx from "clsx"
 import { useAuth } from "@/contexts/AuthContext"
@@ -27,6 +28,7 @@ const navigation = [
   { name: "Ventas", href: "/ventas", icon: ShoppingCartIcon, roles: ["admin", "empleado"] },
   { name: "Caja", href: "/caja", icon: CurrencyDollarIcon, roles: ["admin", "empleado"] },
   { name: "Clientes", href: "/clientes", icon: UsersIcon, roles: ["admin", "empleado"] },
+  { name: "Repartos", href: "/repartos", icon: TruckIcon, roles: ["admin", "empleado"] },
 
   // Rutas solo para admin
   { name: "Stock", href: "/stock", icon: CubeIcon, roles: ["admin"] },
