@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useDeliveriesStore } from "../../stores/deliveriesStore"
 import { useCustomerStore } from "../../stores/customerStore"
-import { useUserStore } from "../../stores/authStore"
+import { useConfigStore } from "../../stores/configStore"
 import { XMarkIcon } from "@heroicons/react/24/outline"
 
 const DeliveryForm = ({ show, onClose }) => {
@@ -23,12 +23,11 @@ const DeliveryForm = ({ show, onClose }) => {
 
   const { createDelivery, loading: deliveryLoading } = useDeliveriesStore()
   const { customers, fetchCustomers } = useCustomerStore()
-  const { users, fetchUsers } = useUserStore()
+  const { users } = useConfigStore()
 
   useEffect(() => {
     if (show) {
       fetchCustomers()
-      fetchUsers()
     }
   }, [show])
 
