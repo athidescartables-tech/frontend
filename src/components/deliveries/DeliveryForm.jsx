@@ -49,8 +49,8 @@ const DeliveryForm = ({ show, onClose }) => {
         if (isMounted) {
           await Promise.all([fetchTopSellingProducts(10), fetchCustomers({ active: "true" }, true)])
 
-          // Auto-set authenticated user as driver (no option to change)
-          if (authenticatedUser && !driver) {
+          // This ensures driver is always set on modal open
+          if (authenticatedUser?.id) {
             setDriver(authenticatedUser)
           }
         }
@@ -66,7 +66,7 @@ const DeliveryForm = ({ show, onClose }) => {
     return () => {
       isMounted = false
     }
-  }, [show, authenticatedUser, driver, setDriver])
+  }, [show]) // Removed authenticatedUser and driver from dependencies to prevent re-runs
 
   // Buscar productos
   useEffect(() => {
@@ -201,7 +201,7 @@ const DeliveryForm = ({ show, onClose }) => {
                         <div className="flex-1 text-left min-w-0">
                           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Repartidor</p>
                           <p className="text-sm font-bold text-gray-900 truncate">
-                            {driver ? driver.name : "Cargando..."}
+                            {driver?.name && driver?.id ? driver.name : "Cargando..."}
                           </p>
                         </div>
                       </div>
