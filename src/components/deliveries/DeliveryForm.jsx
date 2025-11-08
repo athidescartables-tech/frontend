@@ -6,6 +6,7 @@ import { useDeliveriesStore } from "../../stores/deliveriesStore"
 import { useProductStore } from "../../stores/productStore"
 import { useCustomerStore } from "../../stores/customerStore"
 import { useConfigStore } from "../../stores/configStore"
+import { useAuthStore } from "../../stores/authStore"
 import { useToast } from "../../contexts/ToastContext"
 import { formatCurrency, formatStock } from "../../lib/formatters"
 import Button from "../common/Button"
@@ -35,6 +36,7 @@ const DeliveryForm = ({ show, onClose }) => {
   const { topSellingProducts, fetchTopSellingProducts, searchProductsForSales, loading } = useProductStore()
   const { fetchCustomers } = useCustomerStore()
   const { users } = useConfigStore()
+  const { user: authenticatedUser } = useAuthStore()
   const { showToast } = useToast()
 
   const isInitialized = useRef(false)
@@ -50,6 +52,10 @@ const DeliveryForm = ({ show, onClose }) => {
       try {
         if (isMounted) {
           await Promise.all([fetchTopSellingProducts(10), fetchCustomers({ active: "true" }, true)])
+
+          if (authenticatedUser && !driver) {
+            setDriver(authenticatedUser)
+          }
         }
       } catch (error) {
         console.error("Error loading initial data:", error)
@@ -63,7 +69,7 @@ const DeliveryForm = ({ show, onClose }) => {
     return () => {
       isMounted = false
     }
-  }, [show])
+  }, [show, authenticatedUser, driver, setDriver])
 
   // Buscar productos
   useEffect(() => {
