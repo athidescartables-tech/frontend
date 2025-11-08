@@ -6,12 +6,28 @@ import { formatCurrency, formatStock } from "../../lib/formatters"
 import Button from "../common/Button"
 import { TrashIcon, MinusIcon, PlusIcon, ShoppingCartIcon, PhotoIcon } from "@heroicons/react/24/outline"
 
-const DeliveryCart = () => {
+const DeliveryCart = ({ buttonMode = false, onClose }) => {
   const { cart, cartTotal, customer, driver, updateCartItemQuantity, removeFromCart, clearCart, setShowPaymentModal } =
     useDeliveriesStore()
 
   const [editingQuantity, setEditingQuantity] = useState(null)
   const [tempQuantity, setTempQuantity] = useState("")
+
+  if (buttonMode) {
+    return (
+      <Button
+        onClick={() => {
+          if (cart.length === 0) return
+          setShowPaymentModal(true)
+        }}
+        className="flex-1 bg-blue-600 hover:bg-blue-700 text-sm py-3 font-bold rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={cart.length === 0 || !customer || !driver}
+      >
+        <ShoppingCartIcon className="h-5 w-5 inline mr-2" />
+        {!customer ? "Selecciona Cliente" : !driver ? "Selecciona Repartidor" : `Procesar (${cart.length})`}
+      </Button>
+    )
+  }
 
   const handleQuantityChange = (item, delta) => {
     const currentQuantity = item.quantity
