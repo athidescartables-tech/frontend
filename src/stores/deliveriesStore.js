@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import { deliveriesService } from "../services/deliveriesService"
 import { useProductStore } from "./productStore"
+import { useAuthStore } from "./authStore"
 import { PAYMENT_METHODS } from "@/lib/constants"
 import { validateQuantity } from "@/lib/formatters"
 
@@ -55,7 +56,9 @@ export const useDeliveriesStore = create((set, get) => ({
   setSelectedProduct: (product) => set({ selectedProduct: product }),
   setShowPaymentModal: (show) => set({ showPaymentModal: show }),
   setCustomer: (customer) => set({ customer }),
-  setDriver: (driver) => set({ driver }),
+  setDriver: (driver) => {
+    set({ driver })
+  },
   setPaymentMethod: (method) => set({ paymentMethod: method }),
   setNotes: (notes) => set({ notes }),
 
@@ -285,15 +288,18 @@ export const useDeliveriesStore = create((set, get) => ({
       throw new Error("Debe seleccionar un cliente")
     }
 
-    if (!state.driver) {
-      throw new Error("Debe seleccionar un repartidor")
+    const authState = useAuthStore.getState()
+    const authenticatedDriver = authState.user
+
+    if (!authenticatedDriver || !authenticatedDriver.id) {
+      throw new Error("Error: No hay usuario autenticado")
     }
 
     set({ loading: true, error: null })
     try {
       const deliveryData = {
         customer_id: state.customer.id,
-        driver_id: state.driver.id,
+        driver_id: authenticatedDriver.id,
         items: state.cart.map((item) => ({
           product_id: item.id,
           quantity: item.quantity,

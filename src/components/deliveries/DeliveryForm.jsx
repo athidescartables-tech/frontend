@@ -28,8 +28,7 @@ const DeliveryForm = ({ show, onClose }) => {
   const [showCustomerSelector, setShowCustomerSelector] = useState(false)
   const [displayProducts, setDisplayProducts] = useState([])
 
-  const { cart, customer, driver, setCustomer, setDriver, setSelectedProduct, setShowQuantityModal, clearCart } =
-    useDeliveriesStore()
+  const { cart, customer, setCustomer, setSelectedProduct, setShowQuantityModal, clearCart } = useDeliveriesStore()
 
   const { topSellingProducts, fetchTopSellingProducts, searchProductsForSales, loading } = useProductStore()
   const { fetchCustomers } = useCustomerStore()
@@ -51,13 +50,6 @@ const DeliveryForm = ({ show, onClose }) => {
           if (isMounted) {
             // Load data
             await Promise.all([fetchTopSellingProducts(10), fetchCustomers({ active: "true" }, true)])
-
-            if (authenticatedUser && authenticatedUser.id && authenticatedUser.name) {
-              setDriver({
-                id: authenticatedUser.id,
-                name: authenticatedUser.name,
-              })
-            }
           }
         } catch (error) {
           console.error("Error loading initial data:", error)
@@ -70,7 +62,7 @@ const DeliveryForm = ({ show, onClose }) => {
         isMounted = false
       }
     }
-  }, [show, authenticatedUser, setDriver, fetchTopSellingProducts, fetchCustomers])
+  }, [show, fetchTopSellingProducts, fetchCustomers])
 
   // Buscar productos
   useEffect(() => {
@@ -197,7 +189,7 @@ const DeliveryForm = ({ show, onClose }) => {
                         </div>
                       </button>
 
-                      {/* Repartidor - Mostrar solo como texto sin poder cambiar */}
+                      {/* Repartidor - Mostrar solo el usuario autenticado */}
                       <div className="flex items-center space-x-3 p-3 bg-white bg-opacity-90 rounded-lg shadow-sm">
                         <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                           <TruckIcon className="h-5 w-5 text-green-600" />
@@ -205,7 +197,7 @@ const DeliveryForm = ({ show, onClose }) => {
                         <div className="flex-1 text-left min-w-0">
                           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Repartidor</p>
                           <p className="text-sm font-bold text-gray-900 truncate">
-                            {driver?.name && driver?.id ? driver.name : "Cargando..."}
+                            {authenticatedUser?.name || authenticatedUser?.email || "Usuario"}
                           </p>
                         </div>
                       </div>
