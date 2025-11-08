@@ -39,34 +39,38 @@ const DeliveryForm = ({ show, onClose }) => {
   const isInitialized = useRef(false)
 
   useEffect(() => {
-    if (isInitialized.current) return
+    if (!show) return
 
-    let isMounted = true
-    isInitialized.current = true
+    if (!isInitialized.current) {
+      isInitialized.current = true
 
-    const loadInitialData = async () => {
-      try {
-        if (isMounted) {
-          await Promise.all([fetchTopSellingProducts(10), fetchCustomers({ active: "true" }, true)])
+      let isMounted = true
 
-          // This ensures driver is always set on modal open
-          if (authenticatedUser?.id) {
-            setDriver(authenticatedUser)
+      const loadInitialData = async () => {
+        try {
+          if (isMounted) {
+            // Load data
+            await Promise.all([fetchTopSellingProducts(10), fetchCustomers({ active: "true" }, true)])
+
+            if (authenticatedUser && authenticatedUser.id && authenticatedUser.name) {
+              setDriver({
+                id: authenticatedUser.id,
+                name: authenticatedUser.name,
+              })
+            }
           }
+        } catch (error) {
+          console.error("Error loading initial data:", error)
         }
-      } catch (error) {
-        console.error("Error loading initial data:", error)
+      }
+
+      loadInitialData()
+
+      return () => {
+        isMounted = false
       }
     }
-
-    if (show) {
-      loadInitialData()
-    }
-
-    return () => {
-      isMounted = false
-    }
-  }, [show]) // Removed authenticatedUser and driver from dependencies to prevent re-runs
+  }, [show, authenticatedUser, setDriver, fetchTopSellingProducts, fetchCustomers])
 
   // Buscar productos
   useEffect(() => {
