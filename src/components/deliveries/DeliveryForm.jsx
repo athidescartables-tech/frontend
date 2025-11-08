@@ -1,233 +1,404 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useRef, useEffect, Fragment } from "react"
+import { Dialog, Transition } from "@headlessui/react"
 import { useDeliveriesStore } from "../../stores/deliveriesStore"
+import { useProductStore } from "../../stores/productStore"
 import { useCustomerStore } from "../../stores/customerStore"
 import { useConfigStore } from "../../stores/configStore"
-import { XMarkIcon } from "@heroicons/react/24/outline"
+import { useToast } from "../../contexts/ToastContext"
+import { formatCurrency, formatStock } from "../../lib/formatters"
+import Button from "../common/Button"
+import ProductSearch from "../sales/ProductSearch"
+import CustomerSelectModal from "../sales/CustomerSelect"
+import QuantityModal from "./DeliveryQuantityModal"
+import DeliveryCart from "./DeliveryCart"
+import DeliveryPaymentModal from "./DeliveryPaymentModal"
+import {
+  XMarkIcon,
+  UserIcon,
+  TruckIcon,
+  ShoppingCartIcon,
+  PhotoIcon,
+  MagnifyingGlassIcon,
+} from "@heroicons/react/24/outline"
 
 const DeliveryForm = ({ show, onClose }) => {
-  const [formData, setFormData] = useState({
-    customer_id: "",
-    driver_id: "",
-    items: [],
-    total: 0,
-    notes: "",
-  })
+  const [searchTerm, setSearchTerm] = useState("")
+  const [showCustomerSelector, setShowCustomerSelector] = useState(false)
+  const [showDriverSelector, setShowDriverSelector] = useState(false)
+  const [displayProducts, setDisplayProducts] = useState([])
 
-  const [newItem, setNewItem] = useState({
-    product_id: "",
-    quantity: 1,
-    unit_price: 0,
-  })
+  const { cart, customer, driver, setCustomer, setDriver, setSelectedProduct, setShowQuantityModal, clearCart } =
+    useDeliveriesStore()
 
-  const { createDelivery, loading: deliveryLoading } = useDeliveriesStore()
-  const { customers, fetchCustomers } = useCustomerStore()
+  const { topSellingProducts, fetchTopSellingProducts, searchProductsForSales, loading } = useProductStore()
+  const { fetchCustomers } = useCustomerStore()
   const { users } = useConfigStore()
+  const { showToast } = useToast()
 
+  const isInitialized = useRef(false)
+
+  // Cargar datos iniciales
   useEffect(() => {
+    if (isInitialized.current) return
+
+    let isMounted = true
+    isInitialized.current = true
+
+    const loadInitialData = async () => {
+      try {
+        if (isMounted) {
+          await Promise.all([fetchTopSellingProducts(10), fetchCustomers({ active: "true" }, true)])
+        }
+      } catch (error) {
+        console.error("Error loading initial data:", error)
+      }
+    }
+
     if (show) {
-      fetchCustomers()
+      loadInitialData()
+    }
+
+    return () => {
+      isMounted = false
     }
   }, [show])
 
-  const handleAddItem = () => {
-    if (!newItem.product_id || newItem.quantity <= 0 || newItem.unit_price <= 0) {
-      return
+  // Buscar productos
+  useEffect(() => {
+    let isMounted = true
+
+    const handleSearch = async () => {
+      try {
+        if (isMounted) {
+          const results = await searchProductsForSales(searchTerm)
+          if (isMounted) {
+            setDisplayProducts(results.filter((product) => product.active && product.stock > 0))
+          }
+        }
+      } catch (error) {
+        console.error("Error searching products:", error)
+        if (isMounted) {
+          setDisplayProducts(topSellingProducts.filter((product) => product.active && product.stock > 0))
+        }
+      }
     }
 
-    const itemSubtotal = newItem.quantity * newItem.unit_price
+    handleSearch()
 
-    setFormData((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        {
-          ...newItem,
-          subtotal: itemSubtotal,
-        },
-      ],
-      total: prev.total + itemSubtotal,
-    }))
-
-    setNewItem({
-      product_id: "",
-      quantity: 1,
-      unit_price: 0,
-    })
-  }
-
-  const handleRemoveItem = (index) => {
-    const item = formData.items[index]
-    setFormData((prev) => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index),
-      total: prev.total - item.subtotal,
-    }))
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-
-    if (!formData.customer_id || !formData.driver_id || formData.items.length === 0) {
-      alert("Completa todos los campos requeridos")
-      return
+    return () => {
+      isMounted = false
     }
+  }, [searchTerm, searchProductsForSales, topSellingProducts])
 
-    try {
-      await createDelivery(formData)
-      setFormData({
-        customer_id: "",
-        driver_id: "",
-        items: [],
-        total: 0,
-        notes: "",
-      })
-      onClose()
-    } catch (error) {
-      console.error("Error creating delivery:", error)
+  const handleSearchChange = (term) => {
+    setSearchTerm(term)
+  }
+
+  const handleAddToCart = (product) => {
+    if (product.stock > 0) {
+      setSelectedProduct(product)
+      setShowQuantityModal(true)
     }
   }
 
-  if (!show) return null
+  const handleSelectCustomer = (selectedCustomer) => {
+    setCustomer(selectedCustomer)
+    setShowCustomerSelector(false)
+  }
+
+  const handleSelectDriver = (selectedDriver) => {
+    setDriver(selectedDriver)
+    setShowDriverSelector(false)
+  }
+
+  const handleClose = () => {
+    clearCart()
+    setSearchTerm("")
+    onClose()
+  }
+
+  const getCartQuantity = (productId) => {
+    const cartItem = cart.find((item) => item.id === productId)
+    return cartItem ? cartItem.quantity : 0
+  }
+
+  // Repartidores activos
+  const activeDrivers = users?.filter((u) => u.active) || []
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end md:items-center justify-center z-50">
-      <div className="bg-white w-full md:max-w-2xl rounded-t-lg md:rounded-lg max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 flex items-center justify-between p-4 md:p-6 bg-white border-b border-gray-200">
-          <h2 className="text-xl font-bold">Nuevo Reparto</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <XMarkIcon className="h-6 w-6" />
-          </button>
-        </div>
+    <>
+      <Transition appear show={show} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={handleClose}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-200"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-150"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-25 backdrop-blur-sm" />
+          </Transition.Child>
 
-        <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-6">
-          {/* Cliente */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">Cliente *</label>
-            <select
-              value={formData.customer_id}
-              onChange={(e) => setFormData({ ...formData, customer_id: Number(e.target.value) })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Selecciona un cliente</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.name} - {customer.phone || "Sin teléfono"}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Repartidor */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">Repartidor *</label>
-            <select
-              value={formData.driver_id}
-              onChange={(e) => setFormData({ ...formData, driver_id: Number(e.target.value) })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Selecciona un repartidor</option>
-              {users?.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Items */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">Productos *</label>
-
-            {formData.items.length > 0 && (
-              <div className="mb-4 space-y-2 bg-gray-50 p-4 rounded-lg">
-                {formData.items.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between py-2 border-b border-gray-200 last:border-0"
-                  >
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-900">
-                        Cant: {item.quantity} x ${item.unit_price.toFixed(2)}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(index)}
-                      className="text-red-600 text-sm hover:underline"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="space-y-3">
-              <input
-                type="number"
-                placeholder="Cantidad"
-                value={newItem.quantity}
-                onChange={(e) => setNewItem({ ...newItem, quantity: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="number"
-                placeholder="Precio unitario"
-                step="0.01"
-                value={newItem.unit_price}
-                onChange={(e) => setNewItem({ ...newItem, unit_price: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={handleAddItem}
-                className="w-full px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 transition-colors"
+          <div className="fixed inset-0 overflow-hidden">
+            <div className="flex min-h-full">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-200"
+                enterFrom="translate-x-full"
+                enterTo="translate-x-0"
+                leave="ease-in duration-150"
+                leaveFrom="translate-x-0"
+                leaveTo="translate-x-full"
               >
-                Agregar Producto
-              </button>
+                <Dialog.Panel className="w-full transform overflow-hidden bg-white shadow-xl transition-all flex flex-col">
+                  {/* Header fijo */}
+                  <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <TruckIcon className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <Dialog.Title as="h2" className="text-lg font-semibold text-gray-900">
+                            Nuevo Reparto
+                          </Dialog.Title>
+                          <p className="text-xs text-gray-500">Agrega productos y completa la información</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleClose}
+                        className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
+                      >
+                        <XMarkIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    {/* Selección de cliente y repartidor compacta */}
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      {/* Cliente */}
+                      <button
+                        onClick={() => setShowCustomerSelector(true)}
+                        className="flex items-center space-x-2 p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <UserIcon className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-gray-500">Cliente</p>
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {customer ? customer.name : "Seleccionar"}
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Repartidor */}
+                      <button
+                        onClick={() => setShowDriverSelector(true)}
+                        className="flex items-center space-x-2 p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <TruckIcon className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-gray-500">Repartidor</p>
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {driver ? driver.name : "Seleccionar"}
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Contenido con scroll */}
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4">
+                      {/* Columna izquierda - Productos (2/3) */}
+                      <div className="lg:col-span-2 space-y-4">
+                        {/* Buscador */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-3">
+                          <ProductSearch onSearchChange={handleSearchChange} searchTerm={searchTerm} />
+                        </div>
+
+                        {/* Lista de productos compacta */}
+                        <div className="bg-white rounded-lg border border-gray-200">
+                          {loading && displayProducts.length === 0 ? (
+                            <div className="flex items-center justify-center py-8">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                              <span className="text-sm text-gray-500">Cargando productos...</span>
+                            </div>
+                          ) : displayProducts.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-8">
+                              <MagnifyingGlassIcon className="h-12 w-12 text-gray-300 mb-2" />
+                              <p className="text-sm text-gray-500">No se encontraron productos</p>
+                            </div>
+                          ) : (
+                            <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
+                              {displayProducts.map((product) => {
+                                const cartQuantity = getCartQuantity(product.id)
+                                return (
+                                  <button
+                                    key={product.id}
+                                    onClick={() => handleAddToCart(product)}
+                                    className="w-full p-3 hover:bg-blue-50 transition-colors flex items-center space-x-3 text-left"
+                                  >
+                                    {/* Imagen */}
+                                    <div className="h-12 w-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                      {product.image ? (
+                                        <img
+                                          src={product.image || "/placeholder.svg"}
+                                          alt={product.name}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      ) : (
+                                        <PhotoIcon className="h-6 w-6 text-gray-400" />
+                                      )}
+                                    </div>
+
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between mb-1">
+                                        <h4 className="text-sm font-medium text-gray-900 truncate">{product.name}</h4>
+                                        {cartQuantity > 0 && (
+                                          <div className="flex items-center bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs font-medium ml-2">
+                                            <ShoppingCartIcon className="h-3 w-3 mr-1" />
+                                            {formatStock(cartQuantity, product.unit_type, false)}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-sm text-gray-600">
+                                          {formatCurrency(product.price)}
+                                          {product.unit_type === "kg" && " /kg"}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          Stock: {formatStock(product.stock, product.unit_type)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Columna derecha - Carrito (1/3) */}
+                      <div className="lg:col-span-1">
+                        <div className="sticky top-0">
+                          <DeliveryCart />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
             </div>
           </div>
+        </Dialog>
+      </Transition>
 
-          {/* Notas */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">Notas</label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Observaciones adicionales..."
-              rows="3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+      {/* Modales auxiliares */}
+      <CustomerSelectModal
+        show={showCustomerSelector}
+        onClose={() => setShowCustomerSelector(false)}
+        onSelectCustomer={handleSelectCustomer}
+      />
 
-          {/* Total */}
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <span className="text-sm text-gray-600">Total del Reparto:</span>
-            <div className="text-2xl font-bold text-gray-900">${formData.total.toFixed(2)}</div>
-          </div>
+      {/* Modal de selección de repartidor */}
+      <Transition appear show={showDriverSelector} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={() => setShowDriverSelector(false)}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-200"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-150"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-25 backdrop-blur-sm" />
+          </Transition.Child>
 
-          {/* Botones */}
-          <div className="flex gap-3 pt-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={deliveryLoading}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {deliveryLoading ? "Creando..." : "Crear Reparto"}
-            </button>
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-200"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-150"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-xl bg-white shadow-xl transition-all">
+                  <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                        <TruckIcon className="h-4 w-4 text-green-600" />
+                      </div>
+                      <Dialog.Title as="h3" className="text-base font-semibold text-gray-900">
+                        Seleccionar Repartidor
+                      </Dialog.Title>
+                    </div>
+                    <button
+                      onClick={() => setShowDriverSelector(false)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="p-4">
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {activeDrivers.length > 0 ? (
+                        activeDrivers.map((user) => (
+                          <button
+                            key={user.id}
+                            onClick={() => handleSelectDriver(user)}
+                            className="w-full text-left px-3 py-3 hover:bg-green-50 border border-gray-200 rounded-lg transition-colors flex items-center space-x-3"
+                          >
+                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                              <TruckIcon className="h-5 w-5 text-green-600" />
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                              <div className="text-xs text-gray-500">{user.email}</div>
+                            </div>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <TruckIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500">No hay repartidores disponibles</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-4 border-t border-gray-100 bg-gray-50">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowDriverSelector(false)}
+                      className="w-full text-sm py-2"
+                    >
+                      Cerrar
+                    </Button>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
           </div>
-        </form>
-      </div>
-    </div>
+        </Dialog>
+      </Transition>
+
+      <QuantityModal />
+      <DeliveryPaymentModal onClose={handleClose} />
+    </>
   )
 }
 
